@@ -24,6 +24,15 @@ code {
     box-shadow: 2px 2px 8px #666;
 }
 
+code.inline {
+    display: inline-block;
+    border-radius: 5px;
+    padding: 3px !important;
+    box-shadow: 1px 1px 4px #666;    
+    background: #333;
+    color: #ddd;    
+}
+
 table {
     border-collapse: collapse;
 }
