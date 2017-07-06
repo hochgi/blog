@@ -4,7 +4,7 @@ One of the most interesting pieces of code in CM-Well, IMO, is the [http client 
 Why not just use akka's API, you might ask...? Well, we'll get there, but first, a bit of history.
 
 ##A long time ago
-(In a galaxy far far away) CM-Well was written mostly in java (oh boy... in fact, it started out as a POC with python &amp; django, and only later was implemented in java &amp; scala). Only the frontend was written in scala, and the scala eco-system looked very different than what it is today. The most popular scala web framework at the time was [lift](http://liftweb.net). No one heard of [play!](http://playframework.com) back then (it was very new, maybe 1.0 or 1.1). And it was decided to write the CM-Well web service with lift. But not only the web service... You see, lift classes were already on the classpath. Especially lift's _HttpSupport_ from the testkit, which had reasonable API. So all of CM-Well's integration tests were written using it. It served it's purpose, and tests kept pilling up, until we decided to upgrade scala from 2.9 to 2.10. lift was holding us back, and play started to look more and more attractive. We replaced lift with play! but decided to rewrite the integration tests without using play's testkit or http client, after all, what if down the road we would want to replace it with something else? We didn't want to be tied up to much to the web framework, so we minimized our dependency in play as much as possible. For the integration tests, we decided to go with a popular scala http client instead. The infamous [Dispatch](http://dispatch.databinder.net) (don't judge... back then it was popular). For those who are not familiar with dispatch, it's a scala http client library, which makes heavy use of symbolic operators (check out the [Periodic Table](http://www.flotsam.nl/dispatch-periodic-table.html)). Other than making the code less readable with all those fancy operators to new-comers, it served it's purpose pretty good. That is until... yup. It was time to upgrade again, and move from scala 2.10 to 2.11. And again, our integration tests (and other code that made use of an http client), were written with a library that didn't move fast enough. It held us back, causing a "jar hell" of unwanted dependencies... and we grew tired of all the weird operators. But no one wanted to rewrite all the tests again... that's a lot of dirty work. We hacked, and managed to get by with using it only in tests, so at least we didn't had the jar hell on our main artifacts classpath, just in tests. Other code in main artifacts that did need to use a http client, used whatever we had on the classpath directly. Be it play's WS, or [spray](http://spray.io), it didn't really mattered. But time went by, and tests kept pilling up, and it was way due to clean the code. Being a bit wiser from the bad experience, we decided to make sure that tests code will never hold us back again from changing libraries and frameworks. We decided to write a thin wrapper with a sane & simple http client API. but wrapper for what? well... it doesn't matter. That was the whole point; it it's small enough, we can always change the underlying library, and won't have to patch up thousands lines of testing code if we ever switch to another library. Anyway, we needed to pick up something, and at the time, we were really excited about the recent developments in akka. It was 2015, and the akka-stream & akka-http experimental modules came out. We decided to check it out, but the experimental modules were too risky for production code, which made it a perfect candidate to serve in our tests as a dispatch replacement, without affecting production code. This was 2 birds in 1 stone - evaluating an interesting technology in it's early stages, with real code, without risking anything crucial, and using our thin wrapper to decouple test's logic from the http client library.
+(In a galaxy far far away) CM-Well was written mostly in java[^footnote] (oh boy...). Only the frontend was written in scala, and the scala eco-system looked very different than what it is today. The most popular scala web framework at the time was [lift](http://liftweb.net). We didn't heard of [play!](http://playframework.com) back then (it was very new, maybe 1.0 or 1.1). And it was decided to write the CM-Well web service with lift. But not only the web service... You see, lift classes were already on the classpath. Especially lift's _HttpSupport_ from the testkit, which had reasonable API. So all of CM-Well's integration tests were written using it. It served it's purpose, and tests kept pilling up, until we decided to upgrade scala from 2.9 to 2.10. lift was holding us back, and play started to look more and more attractive. We replaced lift with play! but decided to rewrite the integration tests without using play's testkit or http client, after all, what if down the road we would want to replace it with something else? We didn't want to be tied up to much to the web framework, so we minimized our dependency in play as much as possible. For the integration tests, we decided to go with a popular scala http client instead. The infamous [Dispatch](http://dispatch.databinder.net) (don't judge... back then it was popular). For those who are not familiar with dispatch, it's a scala http client library, which makes heavy use of symbolic operators (check out the [Periodic Table](http://www.flotsam.nl/dispatch-periodic-table.html)). Other than making the code less readable with all those fancy operators to new-comers, it served it's purpose pretty good. That is until... yup. It was time to upgrade again, and move from scala 2.10 to 2.11. And again, our integration tests (and other code that made use of an http client), were written with a library that didn't move fast enough. It held us back, causing a "jar hell" of unwanted dependencies... and we grew tired of all the weird operators. But no one wanted to rewrite all the tests again... that's a lot of dirty work. We hacked, and managed to get by with using it only in tests, so at least we didn't had the jar hell on our main artifacts classpath, just in tests. Other code in main artifacts that did need to use a http client, used whatever we had on the classpath directly. Be it play's WS, or [spray](http://spray.io), it didn't really mattered. But time went by, and tests kept pilling up, and it was way due to clean the code. Being a bit wiser from the bad experience, we decided to make sure that tests code will never hold us back again from changing libraries and frameworks. We decided to write a thin wrapper with a sane & simple http client API. but wrapper for what? well... it doesn't matter. That was the whole point; it it's small enough, we can always change the underlying library, and won't have to patch up thousands lines of testing code if we ever switch to another library. Anyway, we needed to pick up something, and at the time, we were really excited about the recent developments in akka. It was 2015, and the akka-stream & akka-http experimental modules came out. We decided to check it out, but the experimental modules were too risky for production code, which made it a perfect candidate to serve in our tests as a dispatch replacement, without affecting production code. This was 2 birds in 1 stone - evaluating an interesting technology in it's early stages, with real code, without risking anything crucial, and using our thin wrapper to decouple test's logic from the http client library.
 _P.S. to be on the safe side, and for the sport of it, we started to implement the same thin API on top of [ning's AsyncHttpClient](https://github.com/AsyncHttpClient/async-http-client), but never really continued with it, since akka-http got the job done perfectly. But some [remnants stayed commented out in the sources](https://github.com/thomsonreuters/CM-Well/blob/3a9eae23c5d17d4b1606f604a1c822ce884d88df/server/cmwell-util/src/main/scala/cmwell/util/http/SimpleHttpClient.scala#L405-L487), waiting for the day that will never come._
 
 ##We &#x2764; Akka-http
@@ -78,7 +78,7 @@ Which performs the request and return a _Future[Try[HttpResponse]]_.
 Finally, we'll need the _Materializer_ to handle akka's _HttpResponse_, which returns the payload in the form of _Source[ByteString,\_]_. Remember, we wanted to abstract away anything that binds us to the library, so we can't leak (unless we want to, more on that is to follow) akka's classes. Not _Source_ nor _ByteString_. We need to convert it to something else.
 Anyway, as you can see, it's needed. But if you pay attention, you'll see it has default values. This let's us provide reasonable defaults, which can be configured freely using standard typesafe's config. The provided _reference.conf_ only defines the bare minimum:
 
-```sh
+```nohighlight
 cmwell.util.http {
   akka {
     actor {
@@ -120,11 +120,103 @@ object Body {
   private class BodyFromByteString(body: ByteString) extends Body {  ...  }
 }
 ```
-This means, that you may pass the body argument as whatever you want, be it a _String_, a _Array[Byte]_ or even akka's _ByteString_. If the need arises, it's very easy to add more automatically acceptable types. We can just add another implicit conversion in _Body_'s companion object. or, if it's a special case, then just instantiate a new _Body_ locally.
-
-
+This means, that you may pass the body argument as whatever you want, be it a _String_, a _Array[Byte]_ or even akka's _ByteString_. If the need arises, it's very easy to add more automatically acceptable types. We can just add another implicit conversion in _Body_'s companion object. or, if it's a special case, then just instantiate a new _Body_ locally, or write your own implicit conversions. 
 
 ###SimpleResponse[T] &amp; SimpleResponseHandler
+_SimpleResponse_ is the reponse we get back from executing the request, it's a pretty simple case class:
 
+```scala
+object SimpleResponse {
 
+  type ContentType = String
+  type ResponseBody[T] = (ContentType, T)
+
+  ...
+}
+
+case class SimpleResponse[T : SimpleResponseHandler](status: Int, 
+                                                     headers: Seq[(String,String)], 
+                                                     body: ResponseBody[T]) {
+  def contentType = body._1
+  def payload = body._2
+
+  override def toString() = ...
+}
+```
+It's just a tuple of the mimetype (_String_) and the body, which can be anything that has a _SimpleResponseHandler_.
+All methods in exposed API has a type parameter _T_ that has a context bound to _SimpleResponseHandler_, which is the type class responsible of generating the appropriate response for us from the response returned by underlying library - i.e: akka. It means we need an implicit _SimpleResponseHandler[T]_ in scope. Now, please look carefully at the methods signature; none of the parameters has type _T_. So, you might think this means the compiler cannot infer the type, and user always have to explicitly write it down? The answer, is no. let's try it out in the REPL:
+
+```scala
+scala> val res = SimpleHttpClient.get("http://google.com")
+res: scala.concurrent.Future[cmwell.util.http.SimpleResponse[Array[Byte]]] = ...
+```
+What's happening here, is that there is a single implicit that's available in _SimpleResponseHandler_ companion, and thus is taken by the compiler (If only one implicit instance of _SimpleResponseHandler_ for some _T_ can be found, than that is what's being picked up, regardless of what _T_ is). This one implicit has the most generic type for a response body. It is simply an _Array[Byte]_. So, if the reponse can fit in memory, it'll be returned as an _Array[Byte]_:
+
+```scala
+trait SimpleResponseHandler[T] {
+  def mkStringRepr(t: T): String
+  def mkResponseOf(status: Int, 
+                   headers: Seq[(String,String)], 
+                   contentType: String, 
+                   dataBytes: Source[ByteString,Any])
+                  (implicit ec: ExecutionContext): Future[SimpleResponse[T]]
+}
+
+object SimpleResponseHandler {
+
+  implicit object ByteArrayHandler extends SimpleResponseHandler[Array[Byte]] {
+    ...
+  }
+}
+```
+But, if you want something else, all you have to do is import the appropriate implicit (more sensible implicit instances of _SimpleResponseHandler_ can be found in _SimpleResponse.Implicits_:
+
+```scala
+object SimpleResponse {
+
+  ...
+
+  // if you want a SimpleResponse[T] for T != Array[Byte],
+  // import a SimpleResponseHandler[T] from here (or implement your own)
+  object Implicits {
+
+    implicit object InputStreamHandler extends SimpleResponseHandler[InputStream] {
+      ...
+    }
+
+    implicit object UTF8StringHandler extends SimpleResponseHandler[String] {
+      ...
+    }
+  }
+}
+
+```
+So if response body cannot fit in memory, simply import appropriate implicit handler:
+
+```scala
+scala> import cmwell.util.http.SimpleResponse.Implicits.InputStreamHandler
+import cmwell.util.http.SimpleResponse.Implicits.InputStreamHandler
+
+scala> val res = SimpleHttpClient.get("http://google.com")
+res: scala.concurrent.Future[cmwell.util.http.SimpleResponse[java.io.InputStream]] = ..
+```
+It works because imported implicits takes precedence over implicits defined in the type class' companion.
+Of course, If you import more than one handler, you'll have to explicitly mention the type, or you'll get a compiler error for "ambiguous implicit values".
+
+##Nice, so... it seems pretty solid. What else?
+The implementation we have in CM-Well's code base is far from complete: 
+
+* Not all http methods are defined (e.g: HEAD)
+* One can think of way more sensible generic reponse handlers to add in _Implicits_ object (e.g: one that simply returns the _Source[ByteString,\_]_ from akka's response directly)
+* Classes can be arranged better, in separate files.
+
+Basically, this API is being extended lazily, when we need to add something new, and is not a complete solution.
+
+##OK, let's wrap it up
+This post is already getting longer than I thought, and we haven't covered web sockets API, or how we convert akka's classes to simple types. So lets leave it as an exercise for the reader ;). The bottom line of this post, is how we ended up with a nice API, which is very flexible, extendable, and implemented in not too many lines of code. The road was a bit bumpy, but the lesson learned was worth it.
+
+##P.S.
+If you want to get your hands dirty, we would love to get some PRs! (regarding the code shown here, or any other part of [CM-Well](https://github.com/thomsonreuters/CM-Well)).
+
+[^footnote]: In fact, it started out as a POC with python &amp; django, and only later was implemented in java &amp; scala.
 </div>

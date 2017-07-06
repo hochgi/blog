@@ -2,6 +2,15 @@
  hochgi style :)
 */
 
+.nohighlight {
+  display: block;
+  overflow-x: auto;
+  padding: 0.5em;
+  color: #ccc;
+  background: #333;
+  -webkit-text-size-adjust: none;
+}
+
 .hljs {
   display: block;
   overflow-x: auto;
