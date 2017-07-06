@@ -25,12 +25,15 @@ code {
 }
 
 code.inline {
-    display: inline-block;
+    display: inline;
     border-radius: 5px;
-    padding: 3px !important;
-    box-shadow: 1px 1px 4px #666;    
-    background: #333;
-    color: #ddd;    
+    padding-top: 1px !important;
+    padding-bottom: 1px !important;
+    padding-left: 5px !important;
+    padding-right: 5px !important;
+    box-shadow: 0.5px 0.5px 2px #666;
+    background: #f8f8f8;
+    color: #0086b3;
 }
 
 table {
