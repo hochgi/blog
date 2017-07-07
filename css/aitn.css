@@ -3,6 +3,12 @@
   vertical-align: super;
 }
 
+
+[id^="fn:"] {
+    font-size: 13px;
+    color: #837a71;
+}
+
 .markdown {
 	margin-left: auto;
 	margin-right: auto;
