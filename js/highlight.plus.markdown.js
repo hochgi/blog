@@ -1,3 +1,4 @@
+//this goes in line 1408 of theme - won't work as external script
 var converter = null;
 setTimeout(function() {
   blogger.ui().configure().view();
