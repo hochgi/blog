@@ -3,7 +3,7 @@
 Unfolding is not a new concept, and this blog post isn't about explaining a [needlessly obfuscated ivory tower FP term](https://en.wikipedia.org/wiki/Anamorphism). This post is about how a simple concept, of building a sequence from an initial state, and a function that generated a tuple of the next state, and an element, is used in [CM-Well](https://github.com/thomsonreuters/CM-Well).
 
 ## How our story begins
-Initially, CM-Well didn't have streaming APIs. The closest thing our users could get, was [`iterator` API](https://github.com/thomsonreuters/CM-Well/blob/master/server/cmwell-docs/cmwell-infodocs/Tutorial.HandsOnExercises.StreamWithIterator.md). There's not much in this API regarding CM-Well's logic, we just wrap [Elasticsearch scroll API](https://www.elastic.co/guide/en/elasticsearch/guide/1.x/scan-scroll.html#scan-scroll), with or without enriching the results by fetching data from Cassandra. We also use a little trick of storing the `scrollId` received from Elasticsearch in a short lived actor, and return the actor address instead, and while doing so, ensuring that the iterator id token isn't "long".
+Initially, CM-Well didn't have streaming APIs. The closest thing our users could get, was [`iterator` API](https://github.com/thomsonreuters/CM-Well/blob/4f703b5b45345cc463f4b822a1d6466e7e72944a/server/cmwell-docs/cmwell-infodocs/Tutorial.HandsOnExercises.StreamWithIterator.md). There's not much in this API regarding CM-Well's logic, we just wrap [Elasticsearch scroll API](https://www.elastic.co/guide/en/elasticsearch/guide/1.x/scan-scroll.html#scan-scroll), with or without enriching the results by fetching data from Cassandra. We also use a little trick of storing the `scrollId` received from Elasticsearch in a short lived actor, and return the actor address instead, and while doing so, ensuring that the iterator id token isn't "long".
 We did this, to allow users to always use GET with a query parameter, what isn't possible with Elasticsearch's original `scrollId`, since it may not fit in a URL (> 4K).
 
 Well, of course, users who used it, just wanted to get all the data.
@@ -26,12 +26,13 @@ So I decided to try and submit [my first PR to akka](https://github.com/akka/akk
 This initial PR, even show you can unfold an infinite stream with what akka had back then ([`unfoldInf`](https://github.com/akka/akka/blob/4799b7736cb37de588b85661a546c47a62979d60/akka-stream/src/main/scala/akka/stream/scaladsl/Source.scala#L276-L298) was later removed, as it really didn't add much value...).
 but unfolding finite and async streams, had to be taken care of in a custom `GraphStage`. Basically, I shamelessly copied play's iteratees API, and implemented it in akka streams.
 I even named the methods `unfold` & `unfoldM` for the async version at first, following the iteratees convention (as can be seen in the [original issue](https://github.com/akka/akka/issues/19021)).
+The resulting [`stream` API](https://github.com/thomsonreuters/CM-Well/blob/4f703b5b45345cc463f4b822a1d6466e7e72944a/server/cmwell-docs/cmwell-infodocs/API.Stream.StreamInfotons.md) is pretty useful, and provides a simple way for users to downloads a complete dataset, with a single `curl`/`wget` command.
 
 Time went by, CM-Well kept evolving, and we started using akka-stream more and more.
-Many parts of CM-Well, act as clients for the webservice. e.g: [cmwell-dc](https://github.com/thomsonreuters/CM-Well/tree/master/server/cmwell-dc), which is responsible (among other things) to inter data center synchronization.
-Or [cmwell-data-tools](https://github.com/thomsonreuters/CM-Well/tree/master/server/cmwell-data-tools) which provides ways to download data from CM-Well, ingest data to CM-Well, or process with SPARQL queries using CM-Well.
+Many parts of CM-Well, act as clients for the webservice. e.g: [cmwell-dc](https://github.com/thomsonreuters/CM-Well/tree/4f703b5b45345cc463f4b822a1d6466e7e72944a/server/cmwell-dc), which is responsible (among other things) to inter data center synchronization.
+Or [cmwell-data-tools](https://github.com/thomsonreuters/CM-Well/tree/4f703b5b45345cc463f4b822a1d6466e7e72944a/server/cmwell-data-tools) which provides ways to download data from CM-Well, ingest data to CM-Well, or process with SPARQL queries using CM-Well.
 These modules uses an API that is tailored for akka-stream/akka-http consumption,
-I am referring to [`consume` API](https://github.com/thomsonreuters/CM-Well/blob/master/server/cmwell-docs/cmwell-infodocs/API.Stream.CreateConsumer.md).
+I am referring to [`consume` API](https://github.com/thomsonreuters/CM-Well/blob/4f703b5b45345cc463f4b822a1d6466e7e72944a/server/cmwell-docs/cmwell-infodocs/API.Stream.CreateConsumer.md).
 In this API, which is meant for stable resumable timebased data consumeption,
 and is based on consecutive searches with range filters rather than scroll in Elasticsearch,
 we decided to take a slightly different approach than what we did with the `iterator` API.
