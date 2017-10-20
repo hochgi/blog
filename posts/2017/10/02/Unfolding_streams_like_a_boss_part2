@@ -1,0 +1,79 @@
+<!-- div class="markdown" style="display: none;" -->
+# Parallelizing resumable bulk consumes with CM-Well & akka-stream
+In the [previous post](https://hochgi.blogspot.co.il/2017/08/unfolding-streams-like-boss-part-1.html?view=classic)
+we introduced CM-Well's [`consume` API](https://github.com/thomsonreuters/CM-Well/blob/7af690adf2c196e15309ee2b6bdf5536f035780b/docs/API.Stream.ConsumeNextChunk.md),
+and showed how it is tailored to be used with _akka-http_ & _akka-stream_.
+This post will get into the gory details of how to squeeze the most out of CM-Well,
+using the [`bulk-consume` API](https://github.com/thomsonreuters/CM-Well/blob/7af690adf2c196e15309ee2b6bdf5536f035780b/docs/API.Stream.ConsumeNextBulk.md)
+with _akka-http_ & _akka-stream_.
+
+## The `consume` API in depth
+There are two types of "consumes", `consume` & `bulk-consume`.
+We will focus on the latter. But a few words on `consume` to not leave you hanging:
+`consume` just wraps a regular search, with a few extra filters.
+in terms of CM-Well's `qp`, it translate to the following:
+
+Given filters `qp=$QP` and an timestamp `index-time=${ITIME:-0}`,
+CM-Well generates the following (loosely) equivalent search parameters:
+
+```bash
+# set to current time minus 30 seconds
+NOW=$(
+  MILLIS=$(  date +%s%N | cut -b1-13 )
+  calc $MILLIS - 30000
+)
+
+"op=search&qp=system.indexTime>$ITIME,system.indexTime<$NOW,[$QP]&sort-by=system.indexTime&length=100"
+```
+
+It then fetches those (up to) 100 (by default) sorted results, and:
+if all results has the same index time `SOME_ITIME`, it will replace the previous `op=search` with `op=stream`,
+and previous `qp=system.indexTime>$ITIME,system.indexTime<$NOW,[$QP]` with `qp=system.indexTime:$SOME_ITIME,[$QP]`.
+else it will have multiple values, all sorted. it will drop all the tailing results with index time = `$MAX_ITIME`,
+and return the rest, with a token in the header setting the next `$ITIME` to be `$MAX_ITIME - 1`.
+
+These are the basics, the are a few more concerns to take into consideration,
+and if thats interest you, go ahead and check [the source code]().
+
+## Understanding `bulk-consume`
+In contrast to `consume` API, `bulk-consume` tries to be more efficient,
+and retrieve a lot more infotons per request à la `stream` style.
+Under the hood it uses Elasticsearch's scroll API in a similar way to how we described `stream` API is made in the previous post.
+The problem is, that you can't get sorted results with scroll from Elasticsearch.
+So, instead of advancing the timeline using sorted search, we filter results in advance.
+
+This means there's a pre-processing phase where we try to find a _from_ and _to_ timestamps,
+that are not "too far" apart, in terms of number of results, but enough to stream efficiently.
+CM-Well does it using a simple binary search to do so, and it tries to return a chunked response
+with _O(1M)_ results (by default).
+There are many edge cases covered, like an early cutoff, if the binary search doesn't converged fast enough,
+And dealing with near current time results, etc'...
+
+Like `consume`, `bulk-consume` returns a position token in headers. In fact, the tokens are interchangeable between the 2 APIs,
+But those returned from a `bulk-consume` request, might contain some extra attributes.
+It turns out, that many pre-processing phases can be avoided if previous request stored an optional next "to" timestamp it might have encounterd during the binary search.
+So, what's so great about the `bulk-consume` API? **pipelined parallelization!**
+You see, the next position token is given eagerly in the response headers,
+and a user can use it right away to fire up the next request.
+Since it will probably take some time to fetch all those _O(1M)_ results,
+you could end up with as many parallel streams of data that you can handle.
+
+But, you might ask: _"What about failures? retrying?"_, the answer is,
+that bulk consume also let's you set upper bound timestamp explicitly.
+If your token was an optimized one, you can reuse it safely.
+If not, a new binary search might yield different time range,
+and you could end up with duplicate results, or worse, data gaps.
+To overcome this, you should supply a timestamp explicitly when retrying.
+But, what should you supply? Well, there's another header for that.
+Other than `X-CM-WELL-POSITION` header, you also get `X-CM-WELL-TO` header,
+and the value is the upper bound timestamp found in the binary search.
+You should supply this timestamp using `to-hint` query parameter,
+and retry the `bulk-consume` request with it.
+Note that if the position token is optimized, `to-hint` will be ignored.
+
+## OK, got it. let's write some code
+As implied, we will show how to build an _akka-stream_ `Source` of data from CM-Well,
+using `unfoldFlow`, `Retry`, and other cool constructs you can find on _akka-stream_ & _akka-stream-contrib_ libs.
+
+
+<!-- /div -->
