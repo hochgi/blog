@@ -75,5 +75,56 @@ Note that if the position token is optimized, `to-hint` will be ignored.
 As implied, we will show how to build an _akka-stream_ `Source` of data from CM-Well,
 using `unfoldFlow`, `Retry`, and other cool constructs you can find on _akka-stream_ & _akka-stream-contrib_ libs.
 
+### The easy part (motivation)
+Assuming we can somehow get:
+```scala
+type PositionToken = String
+val initialPosition: PositionToken = ???
+val consume: Flow[PositionToken,(PositionToken,ByteString),_] = ???
+```
+The work left is ridiculously easy thanks to `unfoldFlow`:
+```scala
+SourceGen.unfoldFlow(initialPosition)(consume)
+```
+And we're done!
+OK... not really... It's too simplified.
+`unfoldFlow` can't unfold the next element until it gets the previous generated state.
+This means that all our fancy talk about pipelining parallelization isn't being taken into consideration here.
+So let's try and improve that. How 'bout:
+```scala
+val consume: Flow[PositionToken,(PositionToken,Source[ByteString,_]),_] = ???
+SourceGen.unfoldFlow(initialPosition)(consume)
+         .flatMapConcat(List.apply)
+```
+This is already much better. Each `bulk-consume` Source is being queried eagerly.
+But we still have a downside here... bulks are not evenly sized,
+and size is counted as the number of infotons in the bulk. Not their actual size...
+Moreover, we mentioned retries are supported using `to-hint` with `X-CM-WELL-TO` header's value.
+So, if we are going to retry some streams, this means we need to buffer an entire chunk,
+and only emit once we know it is complete, so we don't get duplicate results from retries.
+This implies a single bulk can get us "stuck" waiting for it.
+The 2 major problems are:
+* No matter how high we set up our parallelization factor,
+we could still end up back-pressuring our slow source (by slow, I mean that whatever the use-case,
+we must assume a fast consumer. e.g: flush to disk, which is much faster than our network calls).
+* Having `$parallelization-factor × O(1M)` all buffer into memory, makes our GC inefficient,
+due to objects kept in memory for long time. And also we cause our downstream to be in starvation until we "unstuck" the current bulk.
 
+So, since bulk are not sorted according to timeline anyway, then no reason not to use `merge` instead of `concat`:
+```scala
+SourceGen.unfoldFlow(initialPosition)(consume)
+         .flatMapMerge(List.apply)
+```
+Also, we will try to optimize even further. Our queries to `bulk-consume` are our "bottle-neck".
+So, it is better to not pull in all the data with the bulk. let's use a thin format, like `tsv`,
+which won't return data itself, only a tuple consisting of infoton's path, date, uuid, and indexTime.
+This way, we can at a later stage pull in data of small batches of infotons we got from the bulk consume.
+So our final higher level stream should look like:
+```scala
+val consume: Flow[PositionToken,(PositionToken,Source[List[ByteString],_]),_] = ???
+SourceGen.unfoldFlow(initialPosition)(consume)
+         .flatMapMerge(identity)
+```
+OK, armed with our goal in mind, let's implement the `consume` flow:
+### The detailed part
 <!-- /div -->
