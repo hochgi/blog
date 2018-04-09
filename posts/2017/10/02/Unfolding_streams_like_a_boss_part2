@@ -141,7 +141,7 @@ SourceGen.unfoldFlow(initialPosition)(consume)
 ```
 OK, armed with our goal in mind, let's implement the `consume` flow:
 ### The detailed part
-First, let's try to break down & visualize the stream:
+Let's try to break down & visualize the stream:
 - Retry:
     * bulk-consume ~> fold results into a single element
     * if #lines != `X-CM-WELL-N` header or any other failure:
@@ -151,4 +151,8 @@ First, let's try to break down & visualize the stream:
 - Enrich with data:
     * batch paths
     * `Balance` vs. `mapAsync` parallelization of fetching (we'll introduce both approaches)
+
+### Wrapping up
+This might be covered in a future post. Currently, It has been sitting untouched for too long,
+and I'm "flushing" it. For now, implementation details are left as an excersize for the reader ;)
 <!-- /div -->
