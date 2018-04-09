@@ -113,18 +113,42 @@ due to objects kept in memory for long time. And also we cause our downstream to
 So, since bulk are not sorted according to timeline anyway, then no reason not to use `merge` instead of `concat`:
 ```scala
 SourceGen.unfoldFlow(initialPosition)(consume)
-         .flatMapMerge(List.apply)
+         .flatMapMerge(identity)
 ```
 Also, we will try to optimize even further. Our queries to `bulk-consume` are our "bottle-neck".
 So, it is better to not pull in all the data with the bulk. let's use a thin format, like `tsv`,
 which won't return data itself, only a tuple consisting of infoton's path, date, uuid, and indexTime.
 This way, we can at a later stage pull in data of small batches of infotons we got from the bulk consume.
-So our final higher level stream should look like:
+So our final higher level stream should either look like:
 ```scala
 val consume: Flow[PositionToken,(PositionToken,Source[List[ByteString],_]),_] = ???
+val addData: Flow[List[ByteString],ByteString,_] = ???
 SourceGen.unfoldFlow(initialPosition)(consume)
          .flatMapMerge(identity)
+         .mapConcat(identity)
+         .via(addData)
+```
+where `addData` flow utilizes `Balance` to fan out and parallelize data fetching job,
+and then fan back in to construct a `Flow` shape which takes care of parallelization internally.
+Another option, is to use a simpler `mapAsync(parallelizationFactor)(...)` to get an easier
+way to parallelize the data fetching job.
+Or, it can look like:
+```scala
+val consume: Flow[PositionToken,(PositionToken,Source[List[ByteString],_]),_] = ???
+val addData: Flow[List[ByteString],ByteString,_] = ???
+SourceGen.unfoldFlow(initialPosition)(consume)
+         .flatMapMerge(_.via(addData))
 ```
 OK, armed with our goal in mind, let's implement the `consume` flow:
 ### The detailed part
+First, let's try to break down & visualize the stream:
+- Retry:
+    * bulk-consume ~> fold results into a single element
+    * if #lines != `X-CM-WELL-N` header or any other failure:
+        - retry with `to-hint=${X-CM-WELL-TO}`
+    * else
+        - emit results
+- Enrich with data:
+    * batch paths
+    * `Balance` vs. `mapAsync` parallelization of fetching (we'll introduce both approaches)
 <!-- /div -->
