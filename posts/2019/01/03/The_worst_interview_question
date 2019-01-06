@@ -66,11 +66,11 @@ Wikipedia is speaking in terms of "array", but quicksort also works perfectly we
 > 3. After partition, check if `index(pivot) == pivot` or `index(pivot) == pivot - 1` [^footnote8]
 > a. If equal recurse only on `> pivot` part of the sequence
 > b. If pivot is larger (by 1) than it's index, recurse only on `< pivot` part of the sequence
-> 4. When sequence is small enough (e.g. < 5), sort it, and check sorted sub-sequence together with (at most) 2 surrounding elements (pivots from previous iterations). the gap will be there.
+> 4. When sequence is small enough (e.g. < 5), sort it, and check sorted sub-sequence together with next index's element (if exist, could be a pivot from previous iteration). the gap will be there.
 
 What are we aiming at here? well, before we go into complexity analysis, we need to explain why it works. It's not a formal proof, but good enough. We know we have all the numbers except one in the range \\(\big[1,n\big]\\). And we know the indices are \\(\big[1, …, n-1\big]\\). So if we would've sorted the sequence, all the elements before the gap would've been found at the correct index (`a[i] == i`), and all the elements larger than the missing element would've been at an offset of one from their index (`a[i - 1] == i`). So if we place the pivot at exactly the correct index, we can tell by looking at the offset if we are higher or lower than the missing element. So we do something very similar to [quickselect](https://en.wikipedia.org/wiki/Quickselect), only instead of knowing up front the index \\(k\\) we want, we iterate according to the index offset. When we finish, the gap might be at a neighboring cell (if missing element index was chosen as pivot at a previous round of the iteration), and we check \\(O\big(1\big)\\) sorted elements containing the gap for the missing element.
 I claim that if we choose a good pivot, this process will take linear time. But before I explain why, I'll give you a minute to see that [good pivots can be chosen in linear time](https://en.wikipedia.org/wiki/Median_of_medians). The tl;dr of it, is that we can choose a pivot that will be in the range \\(\big[0.3n,0.7n\big]\\), so we avoid the worst case leading to \\(O\big(n^2\big)\\) running time. in the worst case, we are always left with 70% of our sequence to check. Each iteration is \\(O\big(n'\big)\\) where \\(n'\\) is the size of the subsequence we iterate on. This is because choosing a good pivot takes \\(O\big(n'\big)\\) and partition takes another \\(O\big(n'\big)\\). in total, we'll get
-$$\sum_{n'=0}^{log_{10/7}{n}}{2n'}\le\frac{20n}{3}=O\big(n\big)$$
+$$\sum_{i=0}^{log_{10/7}{n}}{2{\Big(\frac{7}{10}\Big)}^{i}}n=2n\sum_{i=0}^{log_{10/7}{n}}{{\Big(\frac{7}{10}\Big)}^{i}}\lt2n\sum_{i=0}^{\infty}{{\Big(\frac{7}{10}\Big)}^{i}}=2n\cdot{3\frac{1}{3}}=O\big(n\big)$$
 
 There is so much I'm not explaining here, and many short cuts taken (especially in the math). Like, why (and how) does it work on linked lists, why it's OK to compare numbers and assume it's \\(O\big(1\big)\\), but not ok to assume this for addition (actually, it's not. but in the first solution we summed up \\(n\\) elements, meaning \\(n^2\\) must be less than our primitive max value. when we compare primitives without summing, we can use the entire primitives range \[think of unsigned 64 bit long...\], which is still better than using \\(\sqrt{primitive\ max\ value}\\)), etc'...
 But I want to cut to the point.
@@ -94,5 +94,5 @@ This is a very bad question to ask in job interviews. But what I wish for you to
 
 [^footnote8]: That's the only 2 possible options.
 
-[^footnote9]: And as you probably understand, this is exactly what happened to me on that occasion. I should've known better, and instead of insisting to explain the "correct" answer, I should've take the understanding gap into account and move on. I'll try to be less stubborn in the future.
+[^footnote9]: And as you probably understand, this is exactly what happened to me on that occasion. I should've taken the understanding gap into consideration.
 </div>
