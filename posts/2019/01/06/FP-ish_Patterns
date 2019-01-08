@@ -1,44 +1,30 @@
-<!-- div class="markdown" style="display: none;" -->
+!-- <div class="markdown" style="display: none;" -->
 ## Background
-My twitter feed is becoming more and more (pure) FP oriented.
-Many of the people I follow from the scala community are advocating for haskell over scala lately.
-To be honest, I was always intrigued about pure FP,
-but never got to use it in the "real world"[^footnote1].
-I always worked in teams that had OOP mindset, and codebase.
-With scala I was able to shift the balance a little bit towards FP.
-I advocated for referential transparency, strongly typed over stringly typed code,
-higher order functions, higher kinded types, typeclasses, etc'...
-I aimed to be more FP in an OO world. But I never managed to get my peers into learning together,
-and using, "pure FP" with libraries like cats or scalaz.
-So I wonder, does pure FP really is the answer - the silver bullet - I'm looking for?
+My twitter feed is becoming more and more (pure) FP oriented. Many of the people I follow from the Scala community are advocating for Haskell over Scala lately. To be honest, I was always intrigued about pure FP, but never got to use it in the "real world"[^footnote1]. I always worked in teams that had OOP mindset, and codebase. With Scala I was able to shift the balance a little bit towards FP. I advocated for referential transparency, strongly typed over stringly typed code, higher order functions, higher kinded types, typeclasses, etc'...
+I aimed to be more FP in an OO world. But I never managed to get my peers into learning together, and using, "pure FP" with libraries like cats or scalaz. So I wonder, does pure FP really is the answer - the silver bullet - I'm looking for?
 
 ## Is pure FP really useful in the "real world" or is it too hyped?
-In the latest [scalapeno conference](https://www.scalapeno2018.com),
-I heared [John De Goes](https://twitter.com/jdegoes)'s keynote
-"[The Last Hope for Scala's Infinity War](https://www.youtube.com/watch?v=v8IQ-X2HkGE)".
-In the talk, John claimed that:
+In the latest [scalapeno conference](https://www.scalapeno2018.com), I heard [John De Goes](https://twitter.com/jdegoes)'s keynote "[The Last Hope for Scala's Infinity War](https://www.youtube.com/watch?v=v8IQ-X2HkGE)". In the talk, John claimed that:
 > "Some of the proposed features in Scala 3 are targeting someone who doesn't exist"
 
 He referred to features like Type Classes & Effect System.
 ![features for no one](https://raw.githubusercontent.com/hochgi/blog/master/img/jdg01_type_classes.png)
 
-But the truth is, that john was wrong. There is at least one person that wants such features.
-There is a middle-ground. I want to beleive I'm not alone,
-and some other people see the value Scala has to offer for FP lovers (wannabes?) working with
-traditional OO programmers, trying to make a difference.
+But the truth is, that john was wrong. There is at least one person that wants such features[^footnote2].
+There is a middle-ground. And I want to believe I'm not alone, and some other people see the value Scala has to offer for FP lovers (wannabes?) working with traditional OO programmers, trying to make a difference.
 ![neither](https://raw.githubusercontent.com/hochgi/blog/c5547ad3ff6e2d60a9c73192a83908294499ad31/img/jdg03_neither.png)
 
 Like John, I love Scala. but unlike John, I don't think we need to
-![scarifice half the community](https://raw.githubusercontent.com/hochgi/blog/c5547ad3ff6e2d60a9c73192a83908294499ad31/img/jdg04_half.png)
+![sacrifice half the community](https://raw.githubusercontent.com/hochgi/blog/c5547ad3ff6e2d60a9c73192a83908294499ad31/img/jdg04_half.png)
 
-And I don't want to see all the crossed out features removed from scala:
+And I don't want to see all the crossed out features removed from Scala:
 ![liabilities?](https://raw.githubusercontent.com/hochgi/blog/c5547ad3ff6e2d60a9c73192a83908294499ad31/img/jdg05_liabilities.png)
 
 ## Scala is expressive
 I was asked today, why I love Scala. I answered that with Scala,
 It's very easy for me to express exactly what I mean for the program to do.
 I was then asked to give an example, of short code that I find easy to express in Scala,
-and hard(er) to write in other languages. I choose something Iv'e written a while ago,
+and hard(er) to write in other languages. I choose something I've written a while ago,
 and I find as a nice example for a FP-ish pattern.
 ```scala
 def foo[A,B](as:       Iterable[A])
@@ -47,7 +33,7 @@ def foo[A,B](as:       Iterable[A])
 ```
 So... what's so special about `foo`? The quick FP thinker will write something like:
 ```scala
-Future.traverse(as)(f).reduce(g)
+Future.traverse(as)(f).reduce(g) // if g were (B,B) => B
 ```
 And it can be fine, considering the usecase.
 It wasn't fine in my case.
@@ -58,42 +44,44 @@ But not just any file, it's a CSV with time series events.
 `B` is a time based aggregated states series of the events.
 `f` can be "fetch & aggregate" a single file.
 But since many "sources" (S3 files) can add data,
-we should think about merging (reducing) multiple sources into one uber states series[^footnote2].
+we should think about merging (reducing) multiple sources into one uber states series[^footnote3].
 Thus we need `g` to "merge" two time based aggregated states into a single time based state series.
-Now, file sizes range froma few MBs, up to \~10GB.
+Now, file sizes range from a few MBs, up to ~10GB.
 And this is important, because in the simple solution,
 we cannot start `reduce`-ing the small files,
 until we are done fetching and transforming the bigger 10GB files.
 
 ### Lawful properties
-Interesting things to note about `g`[^footnote3]:
-- `g` is assocciative, it doesn't matter how we merge two time based series states.
+Interesting things to note about `g`[^footnote4]:
+- `g` is assocciative, it doesn't matter how we group and merge two time based series states.
 - `g` is commutative, order is irrelevant. switch LHS with RHS, and get exactly the same result.
 
 So now, our random pure-FP dude will say: great! your category `B` sounds very similar to a _[semilattice](https://en.wikipedia.org/wiki/Semilattice)_.
-Let's also prove that `g` abides the idempotency law, and that `g(b,b) == b` for any \\(b\in(B)\\),
-and maybe we'll find a usefull abstraction using semilattice properties.
+Let's also prove that `g` abides the idempotency law, and that `g(b,b) == b` for any \\(b\in{B}\\),
+and maybe we'll find a useful abstraction using semilattice properties.
 
 Well, that FP-programmer is actually right. and all that high gibberish talk actually has solid foundations.
 And in fact, that function `g` over `B` I just described does define a semilattice.
-`B`s has partiall ordering[^footnote4], `g` acts as the "meet" or "join" operation,
+`B`s has partial ordering[^footnote5], `g` acts as the "meet" or "join" operation,
 and we even have an identity element (the empty time series), so it is even a _"Bounded Semilattice"_.
 
 But this is totally irrelevant and out of the question's scope.
 Remember, we are working in an OO organization.
 If we start defining abstractions over semilattices (or maybe there are ones in cats or scalaz libraries? I really don't know),
 The code will become one giant pile of gibberish in the eyes of my coworkers.
-And we don't even need it. What is needed, with the realization that `g` is assocciative & commutative,
+And we don't even need it. What is needed, with the realization that `g` is associative & commutative,
 is a very natural optimization that pops to mind: why wait for all `A => B` transformations?
 whenever 2 `B`s are ready, any 2 `B`s, we can immediately apply `g` and start the merge process.
 
-So, without over abstracting, I came up with the following piece of code (brace yourselfes):
+So, without over abstracting, I came up with the following piece of code (brace yourselves):
 ```scala
 def foo[A, B](in: Iterable[A])
              (fn: A => Future[B], combop: (B,B) => Future[B])
              (implicit executor: ExecutionContext): Future[B] = {
   val promises = Array.fill(2 * in.size - 1)(Promise.apply[B])
-  var i = 0 // used for iteration optimization (not needing to search for uncompleted promise from start every time)
+  var i = 0 // used for iteration optimization
+            // (not needing to search for uncompleted
+            // promise from start every time)
 
   def completeNext(tb: Try[B]): Unit = {
     var j = i
@@ -117,8 +105,11 @@ def foo[A, B](in: Iterable[A])
     .foreach { twoElems =>
       val (p1, i1) = twoElems.head
       val (p2, i2) = twoElems.last
-      val f1 = p1.future.andThen { case _ => promises(i1) = null } // release potentially heavy elements that
-      val f2 = p2.future.andThen { case _ => promises(i2) = null } // otherwise may stay for potentially long time
+
+      // andThen side effect is meant to release potentially heavy
+      // elements that otherwise may stay for potentially long time
+      val f1 = p1.future.andThen { case _ => promises(i1) = null }
+      val f2 = p2.future.andThen { case _ => promises(i2) = null }
       f1.zip(f2)
         .flatMap(combop.tupled)
         .onComplete(completeNext)
@@ -144,41 +135,19 @@ Out of the
 
 
 // fail fast
-
-<svg width="500" height="470">
-  <polyline points="5,200 495,200 495,270 5,270 5,200" style="fill:none;stroke:black;stroke-width:2" />
-  <line x1="75"  y1="200" x2="75"  y2="270" style="stroke:rgb(0,0,0);stroke-width:2" />
-  <line x1="145" y1="200" x2="145" y2="270" style="stroke:rgb(0,0,0);stroke-width:2" />
-  <line x1="215" y1="200" x2="215" y2="270" style="stroke:rgb(0,0,0);stroke-width:2" />
-  <line x1="285" y1="200" x2="285" y2="270" style="stroke:rgb(0,0,0);stroke-width:2" />
-  <line x1="355" y1="200" x2="355" y2="270" style="stroke:rgb(0,0,0);stroke-width:2" />
-  <line x1="425" y1="200" x2="425" y2="270" style="stroke:rgb(0,0,0);stroke-width:2" />
-  <path d="M 40 270 c 0 140 140 140 140 0" stroke="black" stroke-width="2" fill="none" />
-  <path d="M 110 270 c 0 70 70 70 70 0" stroke="black" stroke-width="2" fill="none" />
-  <path d="M 180 200 c 0 -140 210 -140 210 0" stroke="black" stroke-width="2" fill="none" />
-  <path d="M 250 200 c 0 -70 140 -70 140 0" stroke="black" stroke-width="2" fill="none" />
-  <path d="M 320 270 c 0 140 140 140 140 0" stroke="black" stroke-width="2" fill="none" />
-  <path d="M 390 270 c 0 70 70 70 70 0" stroke="black" stroke-width="2" fill="none" />
-  <circle id="pointA" cx="40" cy="235" r="5" />
-  <circle id="pointA" cx="110" cy="235" r="5" />
-  <circle id="pointA" cx="180" cy="235" r="5" stroke="black" stroke-width="2" fill="none"/>
-  <circle id="pointA" cx="250" cy="235" r="5" />
-  <circle id="pointA" cx="320" cy="235" r="5" />
-  <circle id="pointA" cx="390" cy="235" r="5" stroke="black" stroke-width="2" fill="none"/>
-  <circle id="pointA" cx="460" cy="235" r="5" stroke="black" stroke-width="2" fill="none"/>
-  Sorry, no SVG! :(
-</svg>
-
+![pic](data:image/svg+xml:base64,<svg width="500" height="470"><polyline points="5,200 495,200 495,270 5,270 5,200" style="fill:none;stroke:black;stroke-width:2" /><line x1="75"  y1="200" x2="75"  y2="270" style="stroke:rgb(0,0,0);stroke-width:2" /><line x1="145" y1="200" x2="145" y2="270" style="stroke:rgb(0,0,0);stroke-width:2" /><line x1="215" y1="200" x2="215" y2="270" style="stroke:rgb(0,0,0);stroke-width:2" /><line x1="285" y1="200" x2="285" y2="270" style="stroke:rgb(0,0,0);stroke-width:2" /><line x1="355" y1="200" x2="355" y2="270" style="stroke:rgb(0,0,0);stroke-width:2" /><line x1="425" y1="200" x2="425" y2="270" style="stroke:rgb(0,0,0);stroke-width:2" /><path d="M 40 270 c 0 140 140 140 140 0" stroke="black" stroke-width="2" fill="none" /><path d="M 110 270 c 0 70 70 70 70 0" stroke="black" stroke-width="2" fill="none" /><path d="M 180 200 c 0 -140 210 -140 210 0" stroke="black" stroke-width="2" fill="none" /><path d="M 250 200 c 0 -70 140 -70 140 0" stroke="black" stroke-width="2" fill="none" /><path d="M 320 270 c 0 140 140 140 140 0" stroke="black" stroke-width="2" fill="none" /><path d="M 390 270 c 0 70 70 70 70 0" stroke="black" stroke-width="2" fill="none" /><circle id="pointA" cx="40" cy="235" r="5" /><circle id="pointA" cx="110" cy="235" r="5" /><circle id="pointA" cx="180" cy="235" r="5" stroke="black" stroke-width="2" fill="none"/><circle id="pointA" cx="250" cy="235" r="5" /><circle id="pointA" cx="320" cy="235" r="5" /><circle id="pointA" cx="390" cy="235" r="5" stroke="black" stroke-width="2" fill="none"/><circle id="pointA" cx="460" cy="235" r="5" stroke="black" stroke-width="2" fill="none"/></svg>)
 
 [^footnote1]: Other than maybe a tiny PR to [coursier](https://github.com/coursier/coursier) which uses scalaz.
 
-[^footnote2]: There are multiple ways to approach that problem, and actually,
+[^footnote2]: You are reading that person's blog. Obviously :)
+
+[^footnote3]: There are multiple ways to approach that problem, and actually,
 we ended up with another solution, that utilized akka-streams,
 merging multiple sources with a custom stage & `scan`ing to output a stream of aggregated state in time order.
 
-[^footnote3]: Whenever I encounter such realization, I automatically translate it to property checks tests.
+[^footnote4]: Whenever I encounter such realization, I automatically translate it to property checks tests.
 So to test that `g` is lawful, all I needed is a very simple scalacheck test to test assocciativity & commutativity.
 
-[^footnote4]: think about `b1 != b2`, which means that `g(b1,b2) > b1` and also `g(b1,b2) > b2`.
+[^footnote5]: think about `b1 != b2`, which means that `g(b1,b2) > b1` and also `g(b1,b2) > b2`.
 It may be more obvious in some situations (and it was obvious in our case).
 <!-- /div -->
