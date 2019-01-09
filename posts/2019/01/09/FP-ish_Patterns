@@ -1,11 +1,10 @@
 <!-- div class="markdown" style="display: none;" -->
-
 ## Background
 My twitter feed is becoming more and more (pure) FP oriented. Many of the people I follow from the Scala community are advocating for Haskell over Scala lately. To be honest, I was always intrigued about pure FP, but never got to use it in the "real world"[^footnote1]. I always worked in teams that had OOP mindset, and codebase. With Scala I was able to shift the balance a little bit towards FP. I advocated for referential transparency, strongly typed over stringly typed code, higher order functions, higher kinded types, typeclasses, etc'...
 I aimed to be more FP in an OO world. But I never managed to get my peers into learning together, and using, "pure FP" with libraries like cats or scalaz. So I wonder, does pure FP really is the answer - the silver bullet - I'm looking for, or should we tilt the balance less towards purity in Scala?
 
-## Harsh criticism against non-FP scala
-In the latest [scalapeno conference](https://www.scalapeno2018.com), I heard [John De Goes](https://twitter.com/jdegoes)' keynote "[The Last Hope for Scala's Infinity War](https://www.youtube.com/watch?v=v8IQ-X2HkGE)". In the talk, John claimed that:
+## Harsh criticism against impure Scala
+In the latest [scalapeno conference](https://www.scalapeno2018.com), I attended [John De Goes](https://twitter.com/jdegoes)' keynote "[The Last Hope for Scala's Infinity War](https://www.youtube.com/watch?v=v8IQ-X2HkGE)". In the talk, John claimed that:
 > "Some of the proposed features in Scala 3 are targeting someone who doesn't exist"
 
 He referred to features like Type Classes & Effect System.
@@ -40,7 +39,7 @@ It wasn't fine in our case.
 Consider `A` to be file names to fetch from a S3 bucket. But not just any file, it's a CSV with time series events. `B` is a time based aggregated states series of the events. `f` can be "fetch & aggregate" a single file. But since many "sources" (S3 files) can add data, we should think about merging (reducing) multiple sources into one uber states series[^footnote4]. Thus we need `g` to "merge" two time based aggregated states into a single time based state series. Now, file sizes range from a few MBs, up to ~10GB. And this is important, because in the simple solution, we cannot start `reduce`-ing the small files, until we are done fetching and transforming the bigger 10GB files. Also, if the first `A` in the `Vector` is also mapped to the heaviest `B`, the reduce will be expansive since we always merging ~10GB `B`.
 
 ### Lawful properties
-Interesting things to note about `g`[^footnote5]:
+In this case, there are interesting things to note about `g`[^footnote5]:
 
 - `g` is assocciative, it doesn't matter how we group and merge two time based series states.
 - `g` is commutative, order is irrelevant. switch LHS with RHS, and get exactly the same result.
@@ -58,34 +57,37 @@ whenever 2 `B`s are ready, any 2 `B`s, we can immediately apply `g` and start th
 
 So, without over abstracting, I came up with the following piece of code (brace yourselves):
 ```scala
-def foo[A, B](in: Vector[A])
-             (fn: A => Future[B], combop: (B,B) => Future[B])
+def foo[A, B](as: Vector[A])
+             (f: A => Future[B], g: (B,B) => Future[B])
              (implicit executor: ExecutionContext): Future[B] = {
+
   val promises = Array.fill(2 * in.size - 1)(Promise.apply[B])
   var i = 0 // used for iteration optimization
             // (not needing to search for uncompleted
             // promise from start every time)
 
-  def completeNext(tb: Try[B]): Unit = {
-    // We're not synchronizing i, since we can guarantee we always
-    // an i that is less than or equal to latest i written by any
-    // other thread. But we cannot use i += 1 inside the loop,
-    // since it may result with skipping a cell in 2 threads doing
-    // the increment in parallel, so each thread get's an initial copy
-    // of i as j, and only increment it's own copy. eventually,
-    // we replace i with a valid value j (less than or equal to
-    // first not used promise)
-    var j = i
-    var p = promises(j)
-    while ((p eq null) || !p.tryComplete(t)) {
-      j += 1
-      p = promises(j)
-    }
-    i = j
+  def completeNext(tb: Try[B]): Unit = tb match {
+    case Failure(e) => promises.last.tryFailure(e) // fail fast
+    case Success(b) =>
+      // We're not synchronizing i, since we can guarantee we'll always
+      // get an i that is less than or equal to latest i written by any
+      // other thread. But we cannot use i += 1 inside the loop,
+      // since it may result with skipping a cell in 2 threads doing
+      // the increment in parallel, so each thread get's an initial copy
+      // of i as j, and only increment it's own copy. eventually,
+      // we replace i with a valid value j (less than or equal to
+      // first not used promise)
+      var j = i
+      var p = promises(j)
+      while ((p eq null) || !p.trySuccess(b)) {
+        j += 1
+        p = promises(j)
+      }
+      i = j
   }
 
-  in.foreach { a =>
-    fn(a).onComplete(completeNext)
+  as.foreach { a =>
+    f(a).onComplete(completeNext)
   }
 
   promises
@@ -101,11 +103,25 @@ def foo[A, B](in: Vector[A])
       // elements that otherwise may stay for potentially long time
       val f1 = p1.future.andThen { case _ => promises(i1) = null }
       val f2 = p2.future.andThen { case _ => promises(i2) = null }
-      f1.zip(f2)
-        .flatMap(combop.tupled)
+      failFastZip(f1,f2)
+        .flatMap(g.tupled)
         .onComplete(completeNext)
     }
   promises.last.future
+}
+
+// regular Future.zip flatMaps first future, so it won't
+// fail fast when 2nd RHS future completes first as failure.
+def failFastZip[A,B](l: Future[A], r: Future[B])
+                    (implicit executor: ExecutionContext): Future[(A,B)] = {
+  val p = Promise[(A,B)]()
+  l.onComplete(_.failed.foreach(p.tryFailure))
+  r.onComplete(_.failed.foreach(p.tryFailure))
+  for {
+    a <- l
+    b <- r
+  } p.success(a -> b)
+  p.future
 }
 ```
 
@@ -122,40 +138,52 @@ So our "bucket" is simply an `Array[Promise[B]]` of size \\(2n-1\\).
 
 Have a look at the following figure:
 
-![pic](https://raw.githubusercontent.com/hochgi/blog/72b0052e32f54e3edeaa8e2dc919c41f68fe3ca6/img/array_reduce_order.png)
+![pic](https://raw.githubusercontent.com/hochgi/blog/1c691b03c3b12bcca29ab4a3f1803f6a5d3caed5/img/array_reduce_order.png)
 
 This illustrates the order of computation, when the order is:
 
 1. as(2)
 2. as(1)
 3. g(as(2),as(1))
+4. as(3)
+5. as(0)
+6. g(g(as(2),as(1)),as(3))
+7. g(as(0),g(g(as(2),as(1)),as(3)))
+
+In the simple FP approach (traverse + reduce), same execution will result with the following computation order:
+
+1. as(2)
+2. as(1)
+3. as(3)
 4. as(0)
-5. as(3)
-6. g(g(as(2),as(1)),as(0))
-7. g(as(3),g(g(as(2),as(1)),as(0)))
+5. g(as(0,as(1))
+6. g(g(as(0,as(1)),as(2))
+7. g(g(g(as(0,as(1)),as(2)),as(3))
 
+Which means we don't take advantage of the early completed computations.
 
+### More benefits
+Using early completed computations isn't the only reason I argue the suggested code is superior. It's not just we start computations eagerly, implicitly it also means that heavy elements are left to be dealt in in the end, and we don't need to reduce 10GB files at every step of the way[^footnote7]. We also get "fail fast" semantics; for example, if `g` fails for whatever reason on `as(2)` input, in the code I suggest, you fail fast since it is mapped directly as a failed `Future` result. Also, whenever a future completes, we have a side effect to clean up values that are not needed anymore, so we don't leak.
 
-
-
-// fail fast
-
-
-
+## Bottom line
+What I try to emphasize using the example I showed, is that there are good reasons to write impure functional code. In cases like this, you enjoy both worlds. The interface is functional, it is referential transparent (as much as `Future` is considered referential transparent). Perhaps the above is achievable using pure functional style (I would love to know how. really!), but my gut is telling me it won't be so simple. And as someone who works mostly in hybrid FP-OO teams, I can't go full FP. Not at first anyway...
+Using Scala enables me to introduce a smoother transition into FP without getting my peers too angry or confused. It enables me to break the rules if I really need to. I wouldn't sacrifice the impure parts of the language. I truly think they are too valuable.
 
 
 [^footnote1]: Other than maybe a tiny PR to [coursier](https://github.com/coursier/coursier) which uses scalaz.
 
 [^footnote2]: You are reading that person's blog. Obviously :)
 
-[^footnote3]: Actually, I'd bet he would use `Traversable` with `Task` over std lib's `Future.traverse`
+[^footnote3]: Actually, I'd bet he would use `Traversable` and `Task` over std lib's `Future.traverse`
 
 [^footnote4]: There are multiple ways to approach that problem, and actually,
 we ended up with another solution, that utilized akka-streams,
 merging multiple sources with a custom stage & `scan`ing to output a stream of aggregated state in time order.
 
 [^footnote5]: Whenever I encounter such realization, I automatically translate it to property checks tests.
-So to test that `g` is lawful, all I needed is a very simple scalacheck test to test assocciativity & commutativity.
+So to test that `g` is lawful, all I needed is a very simple scalacheck test to test associativity & commutativity.
 
 [^footnote6]: think about `b1 != b2`, which means that either `g(b1,b2) > b1` and also `g(b1,b2) > b2`, or that `b1` and `b2` already has order relation between them. It may be more obvious in some situations (and it was obvious in our case).
+
+[^footnote7]: Kind of reminds me of the [matrix chain multiplication problem](https://en.wikipedia.org/wiki/Matrix_chain_multiplication).
 <!-- /div -->
