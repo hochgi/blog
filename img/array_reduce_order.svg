@@ -19,9 +19,9 @@
   <circle id="pointA" cx="390" cy="235" r="15" stroke="black" stroke-width="2" fill="none"/>
   <circle id="pointA" cx="460" cy="235" r="15" />
   <circle id="pointA" cx="530" cy="235" r="15" />
-  <text x="105" y="240" fill="black">2</text>
-  <text x="175" y="240" fill="black">1</text>
-  <text x="315" y="240" fill="black">0</text>
-  <text x="385" y="240" fill="black">3</text>
+  <text x="106" y="240" fill="black">2</text>
+  <text x="176" y="240" fill="black">1</text>
+  <text x="316" y="240" fill="black">3</text>
+  <text x="386" y="240" fill="black">0</text>
   Sorry, no SVG! :(
 </svg>
