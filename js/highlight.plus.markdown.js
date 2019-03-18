@@ -1,7 +1,7 @@
 //this goes in line 1414 of theme - won't work as external script
 //Mathjax import line:
 //<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-MML-AM_CHTML&delayStartupUntil=configured' type='text/javascript' async/>
-// note the delayStartupUntil=configured of imported script. 
+// note the delayStartupUntil=configured of imported script.
 var MathJaxUtils = (function () {
 
   let obj = {};
@@ -39,11 +39,11 @@ setTimeout(function() {
 }, 0);
 $(window.blogger.ui()).on(&#39;viewitem&#39;, function (event, post, element) {
 
-//  MathJax.Hub.Config({
-//    TeX: { extensions: ["AMSmath.js", "AMSsymbols.js"],
-//    tex2jax: { inlineMath: [['$','$']] },
-//    processEscapes: true
-//  }});
+  MathJax.Hub.Config({
+    TeX: { extensions: [&quot;enclose.js&quot;,&quot;AMSmath.js&quot;, &quot;AMSsymbols.js&quot;]
+    //tex2jax: { inlineMath: [[&#39;$&#39;,&#39;$&#39;]] },
+    //processEscapes: true
+  }});
 
   MathJax.Hub.Configured();
 
