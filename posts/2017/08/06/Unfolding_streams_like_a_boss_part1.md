@@ -1,4 +1,3 @@
-<div class="markdown" style="display: none;">
 # How we utilize Akka streams in CM-Well
 Unfolding is not a new concept, and this blog post isn't about explaining a [needlessly obfuscated ivory tower FP term](https://en.wikipedia.org/wiki/Anamorphism). This post is about how a simple concept, of building a sequence from an initial state, and a function that generated a tuple of the next state, and an element, is used in [CM-Well](https://github.com/thomsonreuters/CM-Well).
 
@@ -96,4 +95,3 @@ So stay tuned for _"parallelizing resumable bulk consumes with CM-Well & akka-st
 [^footnote1]: Frankly, I'm surprised it's not a built-in part of scala collections.
 
 [^footnote2]: I kept being asked to explain all the [fish](https://github.com/playframework/playframework/blob/2.3.10/framework/src/iteratees/src/main/scala/play/api/libs/iteratee/Enumeratee.scala#L59) in the code...
-</div>

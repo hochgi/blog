@@ -1,4 +1,3 @@
-<div class="markdown" style="display: none;">
 # and how it led to interesting code
 One of the most interesting pieces of code in CM-Well, IMO, is the [http client util code](https://github.com/thomsonreuters/CM-Well/blob/3a9eae23c5d17d4b1606f604a1c822ce884d88df/server/cmwell-util/src/main/scala/cmwell/util/http/SimpleHttpClient.scala). In short, it defines an API for a http client, and wraps akka-http which serves as the "http client engine".
 Why not just use akka's API, you might ask...? Well, we'll get there, but first, a bit of history.
@@ -228,4 +227,3 @@ This post is already getting longer than I thought, and we haven't covered web s
 If you want to get your hands dirty, we would love to get some PRs! (regarding the code shown here, or any other part of [CM-Well](https://github.com/thomsonreuters/CM-Well)).
 
 [^footnote]: In fact, CM-Well started out as a POC with python &amp; django, and only later was implemented in java &amp; scala.
-</div>

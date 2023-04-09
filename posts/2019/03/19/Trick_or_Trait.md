@@ -1,4 +1,3 @@
-<!-- div class="markdown" style="display: none;" -->
 ## tl;dr
 Scala's traits are tricky. There are many pitfalls. especially, if you're dealing with composed/stacked traits. I recently had an interesting conversation on whether it is best to extend a trait in another trait, or enforce a mixin with self typing (which apparently, can be done in several ways). This led me to some new findings (for me at least), and insights, on how and when to use the different approaches.
 
@@ -131,4 +130,3 @@ Adhering to the [principle of least power](http://www.lihaoyi.com/post/Strategic
 [^footnote1]: maybe more on that in a future post.
 
 [^footnote2]: you may think what would be a good usecase. Well, I'm wondering about it myself. Maybe if you have a sealed trait, and you want the implementing classes to have some functionality, but you don't want any other class to have that functionality and still want to put it in a different file. This way you enforce a trait from another file can only be mixed in with your sealed trait, and offer functionality without overloading too much logic in a single file. got any better idea? I'd love to hear :)
-<!-- /div -->

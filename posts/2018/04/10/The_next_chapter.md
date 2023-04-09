@@ -1,4 +1,3 @@
-<div class="markdown" style="display: none;">
 ## Every end is a new beginning
 For the past 6 years I've been a part of the [CM-Well](https://github.com/thomsonreuters/CM-Well) development team. I'm writing this post with lot's of mixed feelings. Working on CM-Well has been an awesome experience! I got a chance to work with so many amazing people. But now it's time to move on, and I'm excited to start a new gig. 
 
@@ -84,4 +83,3 @@ I suck at goodbyes, so let me just say that I really loved working on CM-Well. I
 [^footnote1]: In the early days, we used SVN, and we converted the repo to git at some point, which is why you see some duplicated names (that, and also we may have also committed from multiple users).
 
 [^footnote2]: Kinda get me into thinking I should write a logstash appender that streams real-time action directly into a logstalgia end point. It's gotta be the coolest monitoring one can ask for...!
-</div>

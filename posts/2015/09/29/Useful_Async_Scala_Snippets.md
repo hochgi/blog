@@ -1,4 +1,3 @@
-<div class="markdown" style="display: none;">
 Scala makes it easy to work asynchronously with futures.
 After some time working with scala async constructs, we've seen some repetitive patterns.
 So here's a few snippets that may be useful for others:
@@ -91,4 +90,3 @@ def travector[A, B, M[X] <: TraversableOnce[X]]
 ``` 
 
 The code is pretty much copied from Future.traverse (check & compare), but this simple little trick gained us some perf boost.
-</div>

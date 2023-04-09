@@ -1,4 +1,3 @@
-<div class="markdown" style="display: none;">
 Ever found yourself browsing  through some old legacy sources in some forsaken remote server with less?
 well, here's a small tip you can use to make the experience not so bad. make less do more for you :)
 
@@ -42,4 +41,3 @@ if you don't like the style, change it. instead of _monokai_ you can use any sty
 ```bash
 user@pc:~$ pygmentize -L style
 ```
-</div>

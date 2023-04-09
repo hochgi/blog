@@ -1,4 +1,3 @@
-<div class="markdown" style="display: none;">
 In my previous blog post, [useful async scala snippets](/2015/09/useful-async-scala-snippets.html), I described a way to retry an asynchronous task that may fail. The code Iv'e suggested was:
 
 ```scala
@@ -103,4 +102,3 @@ If we'll count the number of "tasks" to execute at the expense of the given Exec
 Now, let's examine the revised implementation. we already have a thread to handle the execution when it is scheduled. we're just scheduling a task it should run. the only "extra" work we are doing, is creating a new Runnable, which when run, will complete a promise with the task's output.
 
 One thing we must pay attention to, is that we must not perform any work at the expense of the scheduling thread. This thread should be available for other scheduling tasks. Note that I also added a regular scheduling method, in which the given (synchronous) task is wrapped inside a Future{...} block. this is to make sure the task is run at the expense of the given (implicitly) ExecutionContext, and not on the scheduling thread. 
-</div>

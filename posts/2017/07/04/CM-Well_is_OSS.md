@@ -1,4 +1,3 @@
-<div class="markdown" style="display: none;">
 ##Ummm... what is this CM-Well thing?
 CM-Well is the project Iv'e worked on in [Thomson Reuters](https://twitter.com/thomsonreuters) for the past few years. I'm not gonna write here about the project itself (there's more than enough information in the [project docs](https://github.com/thomsonreuters/CM-Well/blob/master/server/cmwell-docs/cmwell-infodocs/CM-Well.RootTOC.md)), instead, I'll write on my personal experience working on it.
 
@@ -8,5 +7,3 @@ Well, this is just the first post in a series of posts I plan to publish, dealin
 ##Meanwhile...
 Go ahead and check it out:
 http://github.com/thomsonreuters/CM-Well
-</div>
-

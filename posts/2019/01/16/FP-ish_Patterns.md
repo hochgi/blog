@@ -1,4 +1,3 @@
-<!-- div class="markdown" style="display: none;" -->
 ## Background
 My twitter feed is becoming more and more (pure) FP oriented. Many of the people I follow from the Scala community are advocating for Haskell over Scala lately. To be honest, I was always intrigued about pure FP, but never got to use it in the "real world"[^footnote1]. I always worked in teams that had OOP mindset, and codebase. With Scala I was able to shift the balance a little bit towards FP. I advocated for referential transparency, strongly typed over stringly typed code, higher order functions, higher kinded types, typeclasses, etc'...
 I aimed to be more FP in an OO world. But I never managed to get my peers into learning together, and using, "pure FP" with libraries like cats or scalaz. So I wonder, does pure FP really is the answer - the silver bullet - I'm looking for, or should we tilt the balance less towards purity in Scala?
@@ -186,4 +185,3 @@ So to test that `g` is lawful, all I needed is a very simple scalacheck test to 
 [^footnote6]: think about `b1 != b2`, which means that either `g(b1,b2) > b1` and also `g(b1,b2) > b2`, or that `b1` and `b2` already has order relation between them. It may be more obvious in some situations (and it was obvious in our case).
 
 [^footnote7]: Kind of reminds me of the [matrix chain multiplication problem](https://en.wikipedia.org/wiki/Matrix_chain_multiplication).
-<!-- /div -->

@@ -1,4 +1,3 @@
-<div class="markdown" style="display: none;">
 Ok, first post. **WOOHOOO!**
 Just finished setting up everything: syntax highlighting & markdown. a little example (taken from [here](http://softwaremaniacs.org/playground/showdown-highlight) which I pimped up a bit) shows it:
 
@@ -38,4 +37,3 @@ highlighting is done with [highlight.js](https://highlightjs.org) & markdown wit
 So, I'll probably babble here about all kind of things I find interesting. ~~Also, as the name says, I'm open to suggestions~~ _(So my wife just came up with a cool name... IM KEEPING IT!)_. apparently, coming up with a name for your blog, is quite hard... 
 
 anyway, hope to have some fun. see ya' :)
-</div>

@@ -1,4 +1,3 @@
-<div class="markdown" style="display: none;">
 ## tl;dr
 We, the software development industry people, seek new job opportunities every now and then. Those of us who are in the game long enough, have seen all kinds of interviews. Maybe even conducted interviews for others. As someone who has been on both sides of the fence, I'd like to share some insights, mostly aimed for those conducting the interview, and I'll do it by sharing a real example.
 
@@ -95,4 +94,3 @@ This is a very bad question to ask in job interviews. But what I wish for you to
 [^footnote8]: That's the only 2 possible options.
 
 [^footnote9]: And as you probably understand, this is exactly what happened to me on that occasion. I should've taken the understanding gap into consideration.
-</div>

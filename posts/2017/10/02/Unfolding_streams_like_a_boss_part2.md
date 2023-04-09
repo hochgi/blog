@@ -1,4 +1,3 @@
-<!-- div class="markdown" style="display: none;" -->
 # Parallelizing resumable bulk consumes with CM-Well & akka-stream
 In the [previous post](https://hochgi.blogspot.co.il/2017/08/unfolding-streams-like-boss-part-1.html?view=classic) we introduced CM-Well's [`consume` API](https://github.com/thomsonreuters/CM-Well/blob/7af690adf2c196e15309ee2b6bdf5536f035780b/docs/API.Stream.ConsumeNextChunk.md), and showed how it is tailored to be used with _akka-http_ & _akka-stream_.
 This post will get into the gory details of how to squeeze the most out of CM-Well, using the [`bulk-consume` API](https://github.com/thomsonreuters/CM-Well/blob/7af690adf2c196e15309ee2b6bdf5536f035780b/docs/API.Stream.ConsumeNextBulk.md) with _akka-http_ & _akka-stream_.
@@ -101,4 +100,3 @@ Let's try to break down & visualize the stream:
 
 ### Wrapping up
 This might be covered in a future post. Currently, It has been sitting untouched for too long, and I'm "flushing" it. For now, implementation details are left as an excersize for the reader ;)
-<!-- /div -->
