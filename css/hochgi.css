@@ -1,0 +1,147 @@
+/*
+ hochgi style :)
+*/
+
+.footnote {
+  vertical-align: super;
+}
+
+
+[id^="fn:"] {
+    font-size: 13px;
+    color: #837a71;
+}
+
+html, body{
+	height:100%;
+	margin: 0px;
+	padding: 20px;
+	font-family: Arial, Helvetica, sans-serif;
+}
+
+table {
+    border-collapse: collapse;
+}
+
+th {
+	border: 1px solid #bab5b0;
+	text-align: center;
+	background-color: #efefef;
+	color: #0083bf;
+}
+
+td {
+	border: 1px dotted #bab5b0;
+	height: 125%;
+    padding: 10px;
+    text-align: left;
+    color: #a05000;
+}
+
+H1, H2, H3, H4, H5, H6 {
+    color: #837a71;
+}
+
+H1 {
+    text-align: center;
+    font-weight: bold;
+    margin: 0 0 8px 0;
+    border-bottom: solid 3px #bab5b0;
+    width: 100%;
+}
+
+code:not(.sourceCode) {
+  border-radius: 3px;
+  padding: 3px;
+  box-shadow: 1px 1px 2px #8F867D;
+  font-family: monospace;
+  font-weight: bold;
+  margin: 0 8px;
+  border-style: solid;
+  border-color: #8F867D;
+  border-width: 1px;
+  background: -webkit-linear-gradient(top, #FAFAFA 0%, #EFEFEF 80%, #E0E0E0 100%);
+  color: #00A0A0;
+}
+
+.sourceCode {
+  display: block;
+  overflow-x: auto;
+  color: #C0C0C0;
+  border-radius: 10px;
+  border-style: solid;
+  border-width: 1px;
+  border-color: #666;
+  padding: 10px;
+  box-shadow: 2px 2px 8px #666;
+  background: #333;
+  -webkit-text-size-adjust: none;
+}
+
+.sourceCode pre {
+  border-radius: 0;
+  border-style: none;
+  padding: 0;
+  box-shadow: none;
+}
+
+.sourceCode pre code {
+  border-radius: 0;
+  border-style: none;
+  padding: 0;
+  box-shadow: none;
+}
+
+.co {
+  color: #75715e;
+  font-style: italic;
+}
+
+.kw {
+  color: #40c0e0;
+  font-weight: bold;
+}
+
+.dv,
+.bn,
+.fl {
+  color: #4080c0;
+}
+
+.st {
+  color: #ffb01c;
+}
+
+.pp {
+  color: #ff8000;
+  font-weight: bold;
+}
+
+.fu {
+  color: #ff8000;
+  /* font-style: italic; */
+}
+
+.dt {
+  color: #e6db74;
+  font-weight: bold;
+}
+
+.an {
+  color: #00A0A0;
+}
+
+.ch {
+  color: #FFA020;
+}
+
+.re {
+  color: #837a71;
+  font-weight: bold;
+}
+
+.ot,
+.al,
+.er {
+  color: #b30045;
+}
