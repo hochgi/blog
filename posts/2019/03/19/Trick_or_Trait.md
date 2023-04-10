@@ -4,9 +4,9 @@ Scala's traits are tricky. There are many pitfalls. especially, if you're dealin
 ## What's wrong with the good old abstract class?
 Scala has `abstract class`es, but they are limited. You cannot inherit more than one `class` or `abstract class`. Scala's way to achieve "multiple inheritance" is via "trait mixins". It also allows you to `extend` a trait with another trait, but according to the [specs](https://www.scala-lang.org/files/archive/spec/2.12/05-classes-and-objects.html#templates):
 
-> … A template \\(sc \text{ with } mt_1 \text{ with } \ldots \text{ with } mt_n \\{ stats \\}\\) consists of a constructor invocation \\(sc\\) which defines the template's _superclass_, trait references \\(mt_1,\ldots,mt_n (n≥0)\\), which define the template's _traits_, and a statement sequence _stats_ which contains initialization code and additional member definitions for the template.
+> … A template \(sc \text{ with } mt_1 \text{ with } \ldots \text{ with } mt_n \{ stats \}\) consists of a constructor invocation \(sc\) which defines the template's _superclass_, trait references \(mt_1,\ldots,mt_n (n≥0)\), which define the template's _traits_, and a statement sequence _stats_ which contains initialization code and additional member definitions for the template.
 >
-> Each trait reference \\(mt_i\\) must denote a [trait](https://www.scala-lang.org/files/archive/spec/2.12/05-classes-and-objects.html#traits). By contrast, **the superclass constructor \\(sc\\) normally refers to a class which is not a trait**. It is possible to write a list of parents that starts with a trait reference, e.g. \\(mt_1 \text{ with } \ldots \text{ with } mt_n\\). In that case the list of parents is implicitly extended to include the supertype of \\(mt_1\\) as first parent type. The new supertype must have at least one constructor that does not take parameters. In the following, we will always assume that this implicit extension has been performed, so that the first parent class of a template is a regular superclass constructor, not a trait reference.
+> Each trait reference \(mt_i\) must denote a [trait](https://www.scala-lang.org/files/archive/spec/2.12/05-classes-and-objects.html#traits). By contrast, **the superclass constructor \(sc\) normally refers to a class which is not a trait**. It is possible to write a list of parents that starts with a trait reference, e.g. \(mt_1 \text{ with } \ldots \text{ with } mt_n\). In that case the list of parents is implicitly extended to include the supertype of \(mt_1\) as first parent type. The new supertype must have at least one constructor that does not take parameters. In the following, we will always assume that this implicit extension has been performed, so that the first parent class of a template is a regular superclass constructor, not a trait reference.
 
 This is not something you would normally do. And there's a good reason for it.
 
@@ -80,32 +80,32 @@ $$
 \mathcal{L}\big(\mathcal{C}\big)=\mathcal{C},\mathcal{L}\big(\mathcal{C_n}\big)\vec{+}\ldots\vec{+}\mathcal{L}\big(\mathcal{C_1}\big)
 $$
 
-Where \\(\vec{+}\\) means you add new traits to the right, but only keep the right most appearance of the trait.
+Where \(\vec{+}\) means you add new traits to the right, but only keep the right most appearance of the trait.
 
 $$
 \begin{alignat*}{3}
-    a,A\vec{+}B&= a,\big(A\vec{+}B\big) && \textbf{ if }a\notin B \\\\
+    a,A\vec{+}B&= a,\big(A\vec{+}B\big) && \textbf{ if }a\notin B \\
                &= A\vec{+}B             && \textbf{ if }a\in B
 \end{alignat*}
 $$
 
-This means a class \\(\mathcal{C}\\), or in our case `q`, is linearized as:
+This means a class \(\mathcal{C}\), or in our case `q`, is linearized as:
 ```scala
 val q = new BasicIntQueue with Doubling with Filtering with Incrementing
 ```
-`q` = \\(\mathcal{C}\\)
-`BasicIntQueue` = \\(\mathcal{L}\big(\mathcal{C}_1\big)=\\{BasicIntQueue,IntQueue,AnyRef,Any\\}\\)
-`Doubling` = \\(\mathcal{L}\big(\mathcal{C}_2\big)=\\{Doubling,IntQueue,AnyRef,Any\\}\\)
-`Filtering` = \\(\mathcal{L}\big(\mathcal{C}_3\big)=\\{Filtering,IntQueue,AnyRef,Any\\}\\)
-`Incrementing` = \\(\mathcal{L}\big(\mathcal{C}_4\big)=\\{Incrementing,IntQueue,AnyRef,Any\\}\\)
+`q` = \(\mathcal{C}\)
+`BasicIntQueue` = \(\mathcal{L}\big(\mathcal{C}_1\big)=\{BasicIntQueue,IntQueue,AnyRef,Any\}\)
+`Doubling` = \(\mathcal{L}\big(\mathcal{C}_2\big)=\{Doubling,IntQueue,AnyRef,Any\}\)
+`Filtering` = \(\mathcal{L}\big(\mathcal{C}_3\big)=\{Filtering,IntQueue,AnyRef,Any\}\)
+`Incrementing` = \(\mathcal{L}\big(\mathcal{C}_4\big)=\{Incrementing,IntQueue,AnyRef,Any\}\)
 
 $$
-q,\mathcal{L}\big(\mathcal{C}_4\big) \vec{+} \mathcal{L}\big(\mathcal{C}_3\big) \vec{+} \mathcal{L}\big(\mathcal{C}_2\big) \vec{+} \mathcal{L}\big(\mathcal{C}_1\big) \\\\
-q,\mathcal{L}\big(\mathcal{C}_4\big) \vec{+} \big(\mathcal{L}\big(\mathcal{C}_3\big) \vec{+} \big(\mathcal{L}\big(\mathcal{C}_2\big) \vec{+} \mathcal{L}\big(\mathcal{C}_1\big)\big)\big) \\\\
-q,Incrementing,\mathcal{L}\big(\mathcal{C}_3\big) \vec{+} \big(\mathcal{L}\big(\mathcal{C}_2\big) \vec{+} \mathcal{L}\big(\mathcal{C}_1\big)\big) \\\\
-q,Incrementing,Filtering,\mathcal{L}\big(\mathcal{C}_2\big) \vec{+} \mathcal{L}\big(\mathcal{C}_1\big) \\\\
-q,Incrementing,Filtering,Doubling,\mathcal{L}\big(\mathcal{C}_1\big) \\\\
-q,Incrementing,Filtering,Doubling,BasicIntQueue,IntQueue,AnyRef,Any \\\\
+q,\mathcal{L}\big(\mathcal{C}_4\big) \vec{+} \mathcal{L}\big(\mathcal{C}_3\big) \vec{+} \mathcal{L}\big(\mathcal{C}_2\big) \vec{+} \mathcal{L}\big(\mathcal{C}_1\big) \\
+q,\mathcal{L}\big(\mathcal{C}_4\big) \vec{+} \big(\mathcal{L}\big(\mathcal{C}_3\big) \vec{+} \big(\mathcal{L}\big(\mathcal{C}_2\big) \vec{+} \mathcal{L}\big(\mathcal{C}_1\big)\big)\big) \\
+q,Incrementing,\mathcal{L}\big(\mathcal{C}_3\big) \vec{+} \big(\mathcal{L}\big(\mathcal{C}_2\big) \vec{+} \mathcal{L}\big(\mathcal{C}_1\big)\big) \\
+q,Incrementing,Filtering,\mathcal{L}\big(\mathcal{C}_2\big) \vec{+} \mathcal{L}\big(\mathcal{C}_1\big) \\
+q,Incrementing,Filtering,Doubling,\mathcal{L}\big(\mathcal{C}_1\big) \\
+q,Incrementing,Filtering,Doubling,BasicIntQueue,IntQueue,AnyRef,Any \\
 $$
 
 ## Why should you care?
