@@ -1,0 +1,80 @@
+<p>Scala makes it easy to work asynchronously with futures. After some time working with scala async constructs, we’ve seen some repetitive patterns. So here’s a few snippets that may be useful for others:</p>
+<ul>
+<li><strong>select</strong> - selecting the first future that completes, if there are multiple already completed futures, selects one of those. given a collection of futures, returns a <em>Future[(Try[T],Coll[Future[T]])]</em>, or in words: a Future of tuple of the first completed future’s <em>Try</em> and the collection of the rest of the futures.</li>
+</ul>
+<div class="sourceCode" id="cb1"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true"></a><span class="kw">def</span> select[T,Coll](fc: Coll)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true"></a>          (<span class="kw">implicit</span> ec: ExecutionContext, </span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true"></a>           ev: Coll &lt;:&lt; TraversableLike[Future[T],Coll]): Future[(Try[T],Coll)] = {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true"></a>  <span class="kw">if</span> (fc.<span class="fu">isEmpty</span>)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true"></a>    Future.<span class="fu">failed</span>(<span class="kw">new</span> IllegalArgumentException(<span class="st">&quot;select from empty collection&quot;</span>))</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true"></a>  <span class="kw">else</span> {</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true"></a>    <span class="kw">val</span> p = Promise[(Try[T], Future[T])]()</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true"></a>    fc.<span class="fu">foreach</span> { f =&gt;</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true"></a>      f.<span class="fu">onComplete</span> { t =&gt;</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true"></a>        <span class="kw">if</span> (!p.<span class="fu">isCompleted</span>)</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true"></a>          p.<span class="fu">trySuccess</span>(t -&gt; f)</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true"></a>      }</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true"></a>    }</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true"></a>    p.<span class="fu">future</span>.<span class="fu">map</span> {</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true"></a>      <span class="kw">case</span> (t, f) =&gt;</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true"></a>        t -&gt; fc.<span class="fu">filter</span>(_ != f)</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true"></a>    }</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true"></a>  }</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true"></a>}</span></code></pre></div>
+<p><em>sidenote: there is a similar gist by <span class="citation" data-cites="viktorklang">[@viktorklang]</span>(https://twitter.com/viktorklang) which inspired this snippet (difference is on the collection return type). you can find it <a href="https://gist.github.com/viktorklang/4488970">here</a></em></p>
+<ul>
+<li><strong>successes</strong> - given a sequence of futures, return a future of a sequence containing all the futures that succeeded. one of the most frequently used <em>Future</em>’s methods in our code base, is <em>Future.sequence</em>. but sometimes, you’ll need a “softer” method, that will collect all the succeeding futures’ elements, and won’t fail if a few futures failed.</li>
+</ul>
+<div class="sourceCode" id="cb2"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true"></a><span class="kw">def</span> successes[A, M[X] &lt;: Traversable[X]](in: M[Future[A]])</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true"></a>             (<span class="kw">implicit</span> ec: ExecutionContext, </span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true"></a>              cbf: CanBuildFrom[M[Future[A]], A, M[A]]): Future[M[A]] = {</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true"></a>  in.<span class="fu">foldLeft</span>(Future.<span class="fu">successful</span>(<span class="fu">cbf</span>(in))) {</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true"></a>    (fr, fa) =&gt; {</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true"></a>      fa.<span class="fu">flatMap</span>(a =&gt; fr.<span class="fu">map</span>(_ += a)(ec))(ec).<span class="fu">recoverWith</span>{<span class="kw">case</span> _: Throwable =&gt; fr}(ec)</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true"></a>    }</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true"></a>  }.<span class="fu">map</span>(_.<span class="fu">result</span>())</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true"></a>}</span></code></pre></div>
+<p><em>sidenote: this is almost the same as Future.sequence method. (check the scala source code)</em></p>
+<ul>
+<li><strong>stream</strong> - being async is great, but also being lazy. sometime, you’ll want to convert part of your logic to use a regular collections instead of collections containing futures (you’ll need a really good reason to do so). to do this efficiently, you’ll want to convert a sequence of futures to a <em>Stream</em>, where each element in the stream is given as soon as it’s corresponding future completes. i.e: sort a collection of futures by they’re completion time. so here’s how to do async → lazy conversion:</li>
+</ul>
+<div class="sourceCode" id="cb3"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true"></a><span class="kw">def</span> stream[T,Coll](fc: Coll, timeout: FiniteDuration)</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true"></a>                  (<span class="kw">implicit</span> ec: ExecutionContext, </span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true"></a>                   ev: Coll &lt;:&lt; TraversableLike[Future[T],Coll]): Stream[Try[T]] = {</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true"></a>  <span class="kw">if</span> (fc.<span class="fu">isEmpty</span>) Stream.<span class="fu">empty</span>[Try[T]]</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true"></a>  <span class="kw">else</span> <span class="kw">try</span> {</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true"></a>    Await.<span class="fu">result</span>(<span class="fu">select</span>(fc).<span class="fu">map</span> {</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true"></a>      <span class="kw">case</span> (t, coll) =&gt; t #:: <span class="fu">stream</span>(coll, timeout)</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true"></a>    }, timeout)</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true"></a>  }</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true"></a>  <span class="kw">catch</span> {</span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true"></a>    <span class="kw">case</span> e: TimeoutException =&gt; Stream(Failure[T](e))</span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true"></a>  }</span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true"></a>}</span></code></pre></div>
+<ul>
+<li><p><strong>retry</strong> - <del>sometime, you’ll deal with futures that may fail, and you’ll want to retry whatever task that created the future in the first place, with an optional delay between retries. here’s a simple way to do it:</del> The old snippets had many flaws. please refer to the <a href="/2016/03/async-scheduling-retrying-revised.html">following blog post</a> to compare the version given here, with the new improved version.</p></li>
+<li><p><strong>travector</strong> - The following is a tweak of Future.traverse. In our code, we wanted to improve performance, and decided to use internally in Vector instead of the more general seq (defaults to List). Vector is better for cache locality, and perform better with concatenations or appending to the end. So, we had in many places methods that take a Seq[Something], and return Future[Seq[SomethingElse]]. behind the scenes, it was Future.traverse that did the work. And now, we replaced it with: travector!</p></li>
+</ul>
+<div class="sourceCode" id="cb4"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true"></a><span class="co">/**</span> </span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true"></a> <span class="co">*</span> Transforms a <span class="co">`</span>TraversableOnce<span class="co">[</span>A<span class="co">]`</span> into a <span class="co">`</span>Future<span class="co">[</span>Vector<span class="co">[</span>B<span class="co">]]`</span> </span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true"></a> <span class="co">*</span> using the provided function <span class="co">`</span>A <span class="co">=&gt;</span> Future<span class="co">[</span>B<span class="co">]`.</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true"></a> <span class="co">*</span> This is useful for performing a parallel map<span class="co">.</span> </span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true"></a> <span class="co">*</span> For example<span class="co">,</span> to apply a function to all items of a list in parallel<span class="co">:</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true"></a> <span class="co">*</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true"></a> <span class="co">*</span> <span class="re">{{{</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true"></a> <span class="co">*</span>   val myFutureVector <span class="co">=</span> Future<span class="co">.</span>travector<span class="co">(</span>myList<span class="co">)(</span>x <span class="co">=&gt;</span> Future<span class="co">(</span>myFunc<span class="co">(</span>x<span class="co">)))</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true"></a> <span class="co">*</span> <span class="re">}}}</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true"></a> <span class="co">*</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true"></a> <span class="co">*</span> This is the same as <span class="co">`</span>Future<span class="co">.</span>traverse<span class="co">`,</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true"></a> <span class="co">*</span> but it will always yield a vector<span class="co">,</span> </span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true"></a> <span class="co">*</span> regardless of the provided collection type<span class="co">.</span></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true"></a> <span class="co">*/</span></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true"></a><span class="kw">def</span> travector[A, B, M[X] &lt;: TraversableOnce[X]]</span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true"></a>             (in: M[A])</span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true"></a>             (fn: A =&gt; Future[B])</span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true"></a>             (<span class="kw">implicit</span> ec: ExecutionContext): Future[Vector[B]] =</span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true"></a>  in.<span class="fu">foldLeft</span>(Future.<span class="fu">successful</span>(Vector.<span class="fu">newBuilder</span>[B])) { (fr, a) =&gt;</span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true"></a>    <span class="kw">val</span> fb = <span class="fu">fn</span>(a)</span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true"></a>    <span class="kw">for</span> (r &lt;- fr; b &lt;- fb) <span class="kw">yield</span> (r += b)</span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true"></a>  }.<span class="fu">map</span>(_.<span class="fu">result</span>())</span></code></pre></div>
+<p>The code is pretty much copied from Future.traverse (check &amp; compare), but this simple little trick gained us some perf boost.</p>

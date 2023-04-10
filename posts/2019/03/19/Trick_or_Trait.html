@@ -1,0 +1,121 @@
+<h2 id="tldr">tl;dr</h2>
+<p>Scala’s traits are tricky. There are many pitfalls. especially, if you’re dealing with composed/stacked traits. I recently had an interesting conversation on whether it is best to extend a trait in another trait, or enforce a mixin with self typing (which apparently, can be done in several ways). This led me to some new findings (for me at least), and insights, on how and when to use the different approaches.</p>
+<h2 id="whats-wrong-with-the-good-old-abstract-class">What’s wrong with the good old abstract class?</h2>
+<p>Scala has <code>abstract class</code>es, but they are limited. You cannot inherit more than one <code>class</code> or <code>abstract class</code>. Scala’s way to achieve “multiple inheritance” is via “trait mixins”. It also allows you to <code>extend</code> a trait with another trait, but according to the <a href="https://www.scala-lang.org/files/archive/spec/2.12/05-classes-and-objects.html#templates">specs</a>:</p>
+<blockquote>
+<p>… A template \(sc \text{ with } mt_1 \text{ with } \ldots \text{ with } mt_n \{ stats \}\) consists of a constructor invocation \(sc\) which defines the template’s <em>superclass</em>, trait references \(mt_1,\ldots,mt_n (n≥0)\), which define the template’s <em>traits</em>, and a statement sequence <em>stats</em> which contains initialization code and additional member definitions for the template.</p>
+<p>Each trait reference \(mt_i\) must denote a <a href="https://www.scala-lang.org/files/archive/spec/2.12/05-classes-and-objects.html#traits">trait</a>. By contrast, <strong>the superclass constructor \(sc\) normally refers to a class which is not a trait</strong>. It is possible to write a list of parents that starts with a trait reference, e.g. \(mt_1 \text{ with } \ldots \text{ with } mt_n\). In that case the list of parents is implicitly extended to include the supertype of \(mt_1\) as first parent type. The new supertype must have at least one constructor that does not take parameters. In the following, we will always assume that this implicit extension has been performed, so that the first parent class of a template is a regular superclass constructor, not a trait reference.</p>
+</blockquote>
+<p>This is not something you would normally do. And there’s a good reason for it.</p>
+<h2 id="when-should-you-use-extends-on-a-trait">When should you use <code>extends</code> on a trait?</h2>
+<p>Scala’s traits are “stackable”, and can be used for “stackable modifications”. This feature is well blogged on, and not the main purpose of this current post, so go ahead and take a look at the basic example from <a href="https://booksites.artima.com/programming_in_scala_3ed/examples/html/ch12.html#sec5">Programming in Scala book</a>.</p>
+<p>The reason it works so well, is because each trait stacked extend <code>IntQueue</code>, and thus enforcing it’s own place in <a href="https://www.scala-lang.org/files/archive/spec/2.12/05-classes-and-objects.html#class-linearization"><em>class linearization</em></a> to the left of the implementing class, so <code>super</code> calls are always called in proper order. If we would not have extended, but merely enforce a mixin with self type, we wouldn’t be able to call <code>super</code>, thus not be able to stack operations.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true"></a><span class="kw">import</span> scala.<span class="fu">collection</span>.<span class="fu">mutable</span>.<span class="fu">ArrayBuffer</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true"></a><span class="kw">abstract</span> <span class="kw">class</span> IntQueue {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true"></a>  <span class="kw">def</span> <span class="fu">get</span>(): Int</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true"></a>  <span class="kw">def</span> <span class="fu">put</span>(x: Int)</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true"></a>}</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true"></a></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true"></a><span class="kw">trait</span> Doubling <span class="kw">extends</span> IntQueue {</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true"></a>  <span class="kw">abstract</span> <span class="kw">override</span> <span class="kw">def</span> <span class="fu">put</span>(x: Int) = { <span class="kw">super</span>.<span class="fu">put</span>(<span class="dv">2</span> * x) }</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true"></a>}</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true"></a></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true"></a><span class="kw">trait</span> Incrementing <span class="kw">extends</span> IntQueue {</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true"></a>  <span class="kw">abstract</span> <span class="kw">override</span> <span class="kw">def</span> <span class="fu">put</span>(x: Int) = { <span class="kw">super</span>.<span class="fu">put</span>(x + <span class="dv">1</span>) }</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true"></a>}</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true"></a></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true"></a><span class="co">// replacing definition with commented out</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true"></a><span class="co">// self typing code won&#39;t compile:</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true"></a><span class="co">//</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true"></a><span class="co">// trait Filtering { this: IntQueue =&gt;</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true"></a><span class="kw">trait</span> Filtering <span class="kw">extends</span> IntQueue {</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true"></a>  <span class="kw">abstract</span> <span class="kw">override</span> <span class="kw">def</span> <span class="fu">put</span>(x: Int) = {</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true"></a>    <span class="kw">if</span> (x &gt;= <span class="dv">0</span>) <span class="kw">super</span>.<span class="fu">put</span>(x)</span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true"></a>  }</span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true"></a>}</span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true"></a></span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true"></a><span class="kw">class</span> BasicIntQueue <span class="kw">extends</span> IntQueue {</span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true"></a>  <span class="kw">private</span> <span class="kw">val</span> buf = <span class="kw">new</span> ArrayBuffer[Int]</span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true"></a>  <span class="kw">def</span> <span class="fu">get</span>() = buf.<span class="fu">remove</span>(<span class="dv">0</span>)</span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true"></a>  <span class="kw">def</span> <span class="fu">put</span>(x: Int) = { buf += x }</span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true"></a>}</span></code></pre></div>
+<p>Usage:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true"></a>scala&gt; <span class="kw">val</span> q = <span class="kw">new</span> BasicIntQueue <span class="kw">with</span> Doubling <span class="kw">with</span> Filtering <span class="kw">with</span> Incrementing</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true"></a>q: BasicIntQueue <span class="kw">with</span> Doubling <span class="kw">with</span> Filtering <span class="kw">with</span> Incrementing = $anon$<span class="dv">1</span>@<span class="fl">5e3</span>dd1f3</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true"></a>scala&gt; q.<span class="fu">put</span>(-<span class="dv">3</span>);q.<span class="fu">put</span>(<span class="dv">0</span>);q.<span class="fu">put</span>(-<span class="dv">1</span>);q.<span class="fu">put</span>(<span class="dv">1</span>)</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true"></a></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true"></a>scala&gt; q.<span class="fu">get</span>()</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true"></a>res1: Int = <span class="dv">2</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true"></a></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true"></a>scala&gt; q.<span class="fu">get</span>()</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true"></a>res2: Int = <span class="dv">0</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true"></a></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true"></a>scala&gt; q.<span class="fu">get</span>()</span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true"></a>res3: Int = <span class="dv">4</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true"></a></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true"></a>scala&gt; q.<span class="fu">get</span>()</span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true"></a>java.<span class="fu">lang</span>.<span class="fu">IndexOutOfBoundsException</span>: <span class="dv">0</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true"></a>  at scala.<span class="fu">collection</span>.<span class="fu">mutable</span>.<span class="fu">ResizableArray</span>.<span class="fu">apply</span>(ResizableArray.<span class="fu">scala</span>:<span class="dv">46</span>)</span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true"></a>  at scala.<span class="fu">collection</span>.<span class="fu">mutable</span>.<span class="fu">ResizableArray</span>.<span class="fu">apply</span>$(ResizableArray.<span class="fu">scala</span>:<span class="dv">45</span>)</span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true"></a>  at scala.<span class="fu">collection</span>.<span class="fu">mutable</span>.<span class="fu">ArrayBuffer</span>.<span class="fu">apply</span>(ArrayBuffer.<span class="fu">scala</span>:<span class="dv">49</span>)</span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true"></a>  at scala.<span class="fu">collection</span>.<span class="fu">mutable</span>.<span class="fu">ArrayBuffer</span>.<span class="fu">remove</span>(ArrayBuffer.<span class="fu">scala</span>:<span class="dv">173</span>)</span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true"></a>  at BasicIntQueue.<span class="fu">get</span>(IntQueue.<span class="fu">scala</span>:<span class="dv">30</span>)</span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true"></a>  ... <span class="dv">36</span> elided</span></code></pre></div>
+<h2 id="class-linearization">class linearization?</h2>
+<p>The <a href="">specs</a> define linearization according to the following formula:</p>
+<p>
+$$
+\mathcal{L}\big(\mathcal{C}\big)=\mathcal{C},\mathcal{L}\big(\mathcal{C_n}\big)\vec{+}\ldots\vec{+}\mathcal{L}\big(\mathcal{C_1}\big)
+$$
+</p>
+<p>Where \(\vec{+}\) means you add new traits to the right, but only keep the right most appearance of the trait.</p>
+<p>
+$$
+\begin{alignat*}{3}
+    a,A\vec{+}B&= a,\big(A\vec{+}B\big) && \textbf{ if }a\notin B \\\\
+               &= A\vec{+}B             && \textbf{ if }a\in B
+\end{alignat*}
+$$
+</p>
+<p>This means a class \(\mathcal{C}\), or in our case <code>q</code>, is linearized as:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true"></a><span class="kw">val</span> q = <span class="kw">new</span> BasicIntQueue <span class="kw">with</span> Doubling <span class="kw">with</span> Filtering <span class="kw">with</span> Incrementing</span></code></pre></div>
+<p style="font-family: monospace; white-space: pre;"><code>q</code>             = \(\mathcal{C}\)<br>
+<code>BasicIntQueue</code> = \(\mathcal{L}\big(\mathcal{C}_1\big)=\{BasicIntQueue,IntQueue,AnyRef,Any\}\)<br>
+<code>Doubling</code>      = \(\mathcal{L}\big(\mathcal{C}_2\big)=\{Doubling,IntQueue,AnyRef,Any\}\)<br>
+<code>Filtering</code>     = \(\mathcal{L}\big(\mathcal{C}_3\big)=\{Filtering,IntQueue,AnyRef,Any\}\)<br>
+<code>Incrementing</code>  = \(\mathcal{L}\big(\mathcal{C}_4\big)=\{Incrementing,IntQueue,AnyRef,Any\}\)
+</p>
+<p>
+$$
+\begin{aligned}
+& q,\mathcal{L}\big(\mathcal{C}_4\big) \vec{+} \mathcal{L}\big(\mathcal{C}_3\big) \vec{+} \mathcal{L}\big(\mathcal{C}_2\big) \vec{+} \mathcal{L}\big(\mathcal{C}_1\big) \\
+& q,\mathcal{L}\big(\mathcal{C}_4\big) \vec{+} \big(\mathcal{L}\big(\mathcal{C}_3\big) \vec{+} \big(\mathcal{L}\big(\mathcal{C}_2\big) \vec{+} \mathcal{L}\big(\mathcal{C}_1\big)\big)\big) \\
+& q,Incrementing,\mathcal{L}\big(\mathcal{C}_3\big) \vec{+} \big(\mathcal{L}\big(\mathcal{C}_2\big) \vec{+} \mathcal{L}\big(\mathcal{C}_1\big)\big) \\
+& q,Incrementing,Filtering,\mathcal{L}\big(\mathcal{C}_2\big) \vec{+} \mathcal{L}\big(\mathcal{C}_1\big) \\
+& q,Incrementing,Filtering,Doubling,\mathcal{L}\big(\mathcal{C}_1\big) \\
+& q,Incrementing,Filtering,Doubling,BasicIntQueue,IntQueue,AnyRef,Any
+\end{aligned}
+$$
+</p>
+<h2 id="why-should-you-care">Why should you care?</h2>
+<p>Well, to understand the subtle differences between extending or enforcing a mixin, you need to know about how class linearization is performed. Now, notice how when we defined the traits with <code>extends</code>, the linearization of that trait transitively contained the extended other trait. e.g: <code>Doubling</code> class linearization, contained <code>IntQueue</code>. This means, that as a user, no matter how I mix <code>Doubling</code> in my bottom type, in the linearization, <code>IntQueue</code> will always going to be found right to <code>Doubling</code>, and will always be the <code>super</code>. More importantly, <code>IntQueue</code> is going to be initialized prior to <code>Doubling</code> since initialization order takes effect from the right most element in the linearization, and advancing to the left. This is of-course not a problem with <code>IntQueue</code> case, and exactly what we want and expect, but sometimes, you would want to let the end user be in charge of initialization order.</p>
+<h2 id="the-weird-case-of-the-val-in-the-trait">The weird case of the <code>val</code> in the <code>trait</code></h2>
+<p>As you probably know, traits are not interfaces. A trait can hold non abstract members, whether <code>def</code>s, <code>val</code>s, etc’… normally, you shouldn’t care about the linearization of your class. But if your traits interact with each other, and contain (possibly uninitialized) <code>val</code>s, you might (depends on how you defined your class hierarchy and inter-trait interaction) encounter some puzzling <code>NullPointerException</code>s. In these cases, since scalac prohibits any form of circular inheritance, a user can re-arrange mixins order of the bottom type, and carry on. Given of-course the user has full control of the class linearization. When you enforce a mixin using self typing, your trait, and the trait you enforce mixin with, can appear in any order once linearized. The user is in full control. And you can (though not necessarily should) use anything from the enforced mixin, as if it was “extended regularly”. As long as you also type alias <code>this</code>.</p>
+<h2 id="this-aliasing"><code>this</code> aliasing?</h2>
+<p><code>this</code> aliasing isn’t something new or unknown. There are many good reasons to do so<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a>, but for now, just know there are several ways to do it, with very subtle differences between them.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true"></a><span class="kw">trait</span> A { self =&gt; ... }</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true"></a><span class="kw">trait</span> A { self: B =&gt; ... }</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true"></a><span class="kw">trait</span> A { <span class="kw">this</span>: B =&gt; ... }</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true"></a><span class="kw">trait</span> A { _: B =&gt; ... }</span></code></pre></div>
+<p>In the first option, you give an alias to <code>this</code>, usually, so you would be able to refer to it from an inner class (which is quite handy if you utilize path dependent types). The second is interesting, it will force implementing classes to also mix in <code>B</code> trait. Options 3 &amp; 4 are equivalent as much as I know (please correct me if I’m wrong).</p>
+<h2 id="conclusion">conclusion</h2>
+<p>Adhering to the <a href="http://www.lihaoyi.com/post/StrategicScalaStylePrincipleofLeastPower.html">principle of least power</a>, you should choose the most restrictive approach you can get by with. If all you need is to know your trait is always mixed with another trait<a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a>, use only a type (option 4). Also if you need to use another trait capabilities, but only from within a method, or in any way not during initialization, use self typing (options 2, 3, 4). If you also have inner classes and refers to <code>this</code> in the code, alias it as something else (convention is “self”) to ease readability. If you depend on another trait during initialization, then extend it to ensure correct ordering in class linearization. But do it only if you really must.</p>
+<section class="footnotes" role="doc-endnotes">
+<hr />
+<ol>
+<li id="fn1" role="doc-endnote"><p>maybe more on that in a future post.<a href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn2" role="doc-endnote"><p>you may think what would be a good usecase. Well, I’m wondering about it myself. Maybe if you have a sealed trait, and you want the implementing classes to have some functionality, but you don’t want any other class to have that functionality and still want to put it in a different file. This way you enforce a trait from another file can only be mixed in with your sealed trait, and offer functionality without overloading too much logic in a single file. got any better idea? I’d love to hear :)<a href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+</ol>
+</section>

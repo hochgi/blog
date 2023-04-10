@@ -1,0 +1,140 @@
+<h2 id="background">Background</h2>
+<p>My twitter feed is becoming more and more (pure) FP oriented. Many of the people I follow from the Scala community are advocating for Haskell over Scala lately. To be honest, I was always intrigued about pure FP, but never got to use it in the “real world”<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a>. I always worked in teams that had OOP mindset, and codebase. With Scala I was able to shift the balance a little bit towards FP. I advocated for referential transparency, strongly typed over stringly typed code, higher order functions, higher kinded types, typeclasses, etc’… I aimed to be more FP in an OO world. But I never managed to get my peers into learning together, and using, “pure FP” with libraries like cats or scalaz. So I wonder, does pure FP really is the answer - the silver bullet - I’m looking for, or should we tilt the balance less towards purity in Scala?</p>
+<h2 id="harsh-criticism-against-impure-scala">Harsh criticism against impure Scala</h2>
+<p>In the latest <a href="https://www.scalapeno2018.com">scalapeno conference</a>, I attended <a href="https://twitter.com/jdegoes">John De Goes</a>’ keynote “<a href="https://www.youtube.com/watch?v=v8IQ-X2HkGE">The Last Hope for Scala’s Infinity War</a>”. In the talk, John claimed that: &gt; “Some of the proposed features in Scala 3 are targeting someone who doesn’t exist”</p>
+<p>He referred to features like Type Classes &amp; Effect System. <img src="https://raw.githubusercontent.com/hochgi/blog/master/img/jdg01_type_classes.png" alt="features for no one" /></p>
+<p>But the truth is, that john was wrong. There is at least one person that wants such features<a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a>. There is a middle-ground. And I want to believe I’m not alone, and some other people see the value Scala has to offer for FP lovers (wannabes?) working with traditional OO programmers, trying to make a difference. <img src="https://raw.githubusercontent.com/hochgi/blog/c5547ad3ff6e2d60a9c73192a83908294499ad31/img/jdg03_neither.png" alt="neither" /></p>
+<p>Like John, I love Scala. but unlike John, I don’t think we need to <img src="https://raw.githubusercontent.com/hochgi/blog/c5547ad3ff6e2d60a9c73192a83908294499ad31/img/jdg04_half.png" alt="sacrifice half the community" /></p>
+<p>And I don’t want to see all the crossed out features removed from Scala: <img src="https://raw.githubusercontent.com/hochgi/blog/c5547ad3ff6e2d60a9c73192a83908294499ad31/img/jdg05_liabilities.png" alt="liabilities?" /></p>
+<h2 id="scala-is-expressive">Scala is expressive</h2>
+<p>I was recently asked, why I love Scala. I answered that with Scala, It’s very easy for me to express exactly what I mean for the program to do, and that it’s easy to expose beautiful (and safe) functional interface, while encapsulating impure logic and gaining the benefit of both worlds. I was then asked to give an example, of short code that I find easy to express in Scala, and hard(er) to write in other languages. I choose something I’ve written a while ago, and I find as a nice example for such FP-ish pattern.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true"></a><span class="kw">def</span> foo[A,B](as:         Vector[A])</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true"></a>            (f:    A  =&gt; Future[B])</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true"></a>            (g: (B,B) =&gt; Future[B]): Future[B]</span></code></pre></div>
+<p>So… what’s so special about <code>foo</code>? The quick FP thinker will implement it with something like<a href="#fn3" class="footnote-ref" id="fnref3" role="doc-noteref"><sup>3</sup></a>:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true"></a>Future.<span class="fu">traverse</span>(as)(f)</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true"></a>      .<span class="fu">flatMap</span>(_ reduce g) <span class="co">// if g were (B,B) =&gt; B</span></span></code></pre></div>
+<p>And it can be fine, considering the usecase. It wasn’t fine in our case.</p>
+<h3 id="the-real-world-case">The “real world” case</h3>
+<p>Consider <code>A</code> to be file names to fetch from a S3 bucket. But not just any file, it’s a CSV with time series events. <code>B</code> is a time based aggregated states series of the events. <code>f</code> can be “fetch &amp; aggregate” a single file. But since many “sources” (S3 files) can add data, we should think about merging (reducing) multiple sources into one uber states series<a href="#fn4" class="footnote-ref" id="fnref4" role="doc-noteref"><sup>4</sup></a>. Thus we need <code>g</code> to “merge” two time based aggregated states into a single time based state series. Now, file sizes range from a few MBs, up to ~10GB. And this is important, because in the simple solution, we cannot start <code>reduce</code>-ing the small files, until we are done fetching and transforming the bigger 10GB files. Also, if the first <code>A</code> in the <code>Vector</code> is also mapped to the heaviest <code>B</code>, the reduce will be expansive since we always merging ~10GB <code>B</code>.</p>
+<h3 id="lawful-properties">Lawful properties</h3>
+<p>In this case, there are interesting things to note about <code>g</code><a href="#fn5" class="footnote-ref" id="fnref5" role="doc-noteref"><sup>5</sup></a>:</p>
+<ul>
+<li><code>g</code> is assocciative, it doesn’t matter how we group and merge two time based series states.</li>
+<li><code>g</code> is commutative, order is irrelevant. switch LHS with RHS, and get exactly the same result.</li>
+</ul>
+<p>So now, our random pure-FP dude might say: great! your category <code>B</code> sounds very similar to a <em><a href="https://en.wikipedia.org/wiki/Semilattice">semilattice</a></em>. Let’s also prove that <code>g</code> abides the idempotency law, and that <code>g(b,b) == b</code> for any \(b\), and maybe we’ll find a useful abstraction using semilattice properties.</p>
+<p>Well, that FP-programmer is actually right. and all that high gibberish talk actually has solid foundations. And in fact, that function <code>g</code> over <code>B</code> I just described does define a semilattice. <code>B</code>s has partial ordering<a href="#fn6" class="footnote-ref" id="fnref6" role="doc-noteref"><sup>6</sup></a>, <code>g</code> acts as the “join” operation, and we even have an identity element (the empty time series), so it is even a <em>“Bounded Semilattice”</em>.</p>
+<p>But this is totally irrelevant and out of the question’s scope. Remember, we are working in an OO organization. If we start defining abstractions over semilattices (or maybe there are ones in cats or scalaz libraries? I really don’t know), The code will become one giant pile of gibberish in the eyes of my coworkers. And we don’t even need it. What is needed, with the realization that <code>g</code> is associative &amp; commutative, is a very natural optimization that pops to mind: why wait for all <code>A =&gt; B</code> transformations? whenever 2 <code>B</code>s are ready, any 2 <code>B</code>s, we can immediately apply <code>g</code> and start the merge process.</p>
+<p>So, without over abstracting, I came up with the following piece of code (brace yourselves):</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true"></a><span class="kw">def</span> foo[A, B](as: Vector[A])</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true"></a>             (f: A =&gt; Future[B], g: (B,B) =&gt; Future[B])</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true"></a>             (<span class="kw">implicit</span> executor: ExecutionContext): Future[B] = {</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true"></a></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true"></a>  <span class="kw">val</span> promises = Array.<span class="fu">fill</span>(<span class="dv">2</span> * in.<span class="fu">size</span> - <span class="dv">1</span>)(Promise.<span class="fu">apply</span>[B])</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true"></a>  <span class="kw">var</span> i = <span class="dv">0</span> <span class="co">// used for iteration optimization</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true"></a>            <span class="co">// (not needing to search for uncompleted</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true"></a>            <span class="co">// promise from start every time)</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true"></a></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true"></a>  <span class="kw">def</span> <span class="fu">completeNext</span>(tb: Try[B]): Unit = tb <span class="kw">match</span> {</span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true"></a>    <span class="kw">case</span> <span class="fu">Failure</span>(e) =&gt; promises.<span class="fu">last</span>.<span class="fu">tryFailure</span>(e) <span class="co">// fail fast</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true"></a>    <span class="kw">case</span> <span class="fu">Success</span>(b) =&gt;</span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true"></a>      <span class="co">// We&#39;re not synchronizing i, since we can guarantee we&#39;ll always</span></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true"></a>      <span class="co">// get an i that is less than or equal to latest i written by any</span></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true"></a>      <span class="co">// other thread. But we cannot use i += 1 inside the loop,</span></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true"></a>      <span class="co">// since it may result with skipping a cell in 2 threads doing</span></span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true"></a>      <span class="co">// the increment in parallel, so each thread get&#39;s an initial copy</span></span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true"></a>      <span class="co">// of i as j, and only increment it&#39;s own copy. eventually,</span></span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true"></a>      <span class="co">// we replace i with a valid value j (less than or equal to</span></span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true"></a>      <span class="co">// first not used promise)</span></span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true"></a>      <span class="kw">var</span> j = i</span>
+<span id="cb3-22"><a href="#cb3-22" aria-hidden="true"></a>      <span class="kw">var</span> p = <span class="fu">promises</span>(j)</span>
+<span id="cb3-23"><a href="#cb3-23" aria-hidden="true"></a>      <span class="kw">while</span> ((p eq <span class="kw">null</span>) || !p.<span class="fu">trySuccess</span>(b)) {</span>
+<span id="cb3-24"><a href="#cb3-24" aria-hidden="true"></a>        j += <span class="dv">1</span></span>
+<span id="cb3-25"><a href="#cb3-25" aria-hidden="true"></a>        p = <span class="fu">promises</span>(j)</span>
+<span id="cb3-26"><a href="#cb3-26" aria-hidden="true"></a>      }</span>
+<span id="cb3-27"><a href="#cb3-27" aria-hidden="true"></a>      i = j</span>
+<span id="cb3-28"><a href="#cb3-28" aria-hidden="true"></a>  }</span>
+<span id="cb3-29"><a href="#cb3-29" aria-hidden="true"></a></span>
+<span id="cb3-30"><a href="#cb3-30" aria-hidden="true"></a>  as.<span class="fu">foreach</span> { a =&gt;</span>
+<span id="cb3-31"><a href="#cb3-31" aria-hidden="true"></a>    <span class="fu">f</span>(a).<span class="fu">onComplete</span>(completeNext)</span>
+<span id="cb3-32"><a href="#cb3-32" aria-hidden="true"></a>  }</span>
+<span id="cb3-33"><a href="#cb3-33" aria-hidden="true"></a></span>
+<span id="cb3-34"><a href="#cb3-34" aria-hidden="true"></a>  promises</span>
+<span id="cb3-35"><a href="#cb3-35" aria-hidden="true"></a>    .<span class="fu">init</span></span>
+<span id="cb3-36"><a href="#cb3-36" aria-hidden="true"></a>    .<span class="fu">zipWithIndex</span></span>
+<span id="cb3-37"><a href="#cb3-37" aria-hidden="true"></a>    .<span class="fu">sliding</span>(<span class="dv">2</span>,<span class="dv">2</span>)</span>
+<span id="cb3-38"><a href="#cb3-38" aria-hidden="true"></a>    .<span class="fu">toSeq</span></span>
+<span id="cb3-39"><a href="#cb3-39" aria-hidden="true"></a>    .<span class="fu">foreach</span> { twoElems =&gt;</span>
+<span id="cb3-40"><a href="#cb3-40" aria-hidden="true"></a>      <span class="kw">val</span> (p1, i1) = twoElems.<span class="fu">head</span></span>
+<span id="cb3-41"><a href="#cb3-41" aria-hidden="true"></a>      <span class="kw">val</span> (p2, i2) = twoElems.<span class="fu">last</span></span>
+<span id="cb3-42"><a href="#cb3-42" aria-hidden="true"></a></span>
+<span id="cb3-43"><a href="#cb3-43" aria-hidden="true"></a>      <span class="co">// andThen side effect is meant to release potentially heavy</span></span>
+<span id="cb3-44"><a href="#cb3-44" aria-hidden="true"></a>      <span class="co">// elements that otherwise may stay for potentially long time</span></span>
+<span id="cb3-45"><a href="#cb3-45" aria-hidden="true"></a>      <span class="kw">val</span> f1 = p1.<span class="fu">future</span>.<span class="fu">andThen</span> { <span class="kw">case</span> _ =&gt; <span class="fu">promises</span>(i1) = <span class="kw">null</span> }</span>
+<span id="cb3-46"><a href="#cb3-46" aria-hidden="true"></a>      <span class="kw">val</span> f2 = p2.<span class="fu">future</span>.<span class="fu">andThen</span> { <span class="kw">case</span> _ =&gt; <span class="fu">promises</span>(i2) = <span class="kw">null</span> }</span>
+<span id="cb3-47"><a href="#cb3-47" aria-hidden="true"></a>      <span class="fu">failFastZip</span>(f1,f2)</span>
+<span id="cb3-48"><a href="#cb3-48" aria-hidden="true"></a>        .<span class="fu">flatMap</span>(g.<span class="fu">tupled</span>)</span>
+<span id="cb3-49"><a href="#cb3-49" aria-hidden="true"></a>        .<span class="fu">onComplete</span>(completeNext)</span>
+<span id="cb3-50"><a href="#cb3-50" aria-hidden="true"></a>    }</span>
+<span id="cb3-51"><a href="#cb3-51" aria-hidden="true"></a>  promises.<span class="fu">last</span>.<span class="fu">future</span></span>
+<span id="cb3-52"><a href="#cb3-52" aria-hidden="true"></a>}</span>
+<span id="cb3-53"><a href="#cb3-53" aria-hidden="true"></a></span>
+<span id="cb3-54"><a href="#cb3-54" aria-hidden="true"></a><span class="co">// regular Future.zip flatMaps first future, so it won&#39;t</span></span>
+<span id="cb3-55"><a href="#cb3-55" aria-hidden="true"></a><span class="co">// fail fast when 2nd RHS future completes first as failure.</span></span>
+<span id="cb3-56"><a href="#cb3-56" aria-hidden="true"></a><span class="kw">def</span> failFastZip[A,B](l: Future[A], r: Future[B])</span>
+<span id="cb3-57"><a href="#cb3-57" aria-hidden="true"></a>                    (<span class="kw">implicit</span> executor: ExecutionContext): Future[(A,B)] = {</span>
+<span id="cb3-58"><a href="#cb3-58" aria-hidden="true"></a>  <span class="kw">val</span> p = Promise[(A,B)]()</span>
+<span id="cb3-59"><a href="#cb3-59" aria-hidden="true"></a>  l.<span class="fu">onComplete</span>(_.<span class="fu">failed</span>.<span class="fu">foreach</span>(p.<span class="fu">tryFailure</span>))</span>
+<span id="cb3-60"><a href="#cb3-60" aria-hidden="true"></a>  r.<span class="fu">onComplete</span>(_.<span class="fu">failed</span>.<span class="fu">foreach</span>(p.<span class="fu">tryFailure</span>))</span>
+<span id="cb3-61"><a href="#cb3-61" aria-hidden="true"></a>  <span class="kw">for</span> {</span>
+<span id="cb3-62"><a href="#cb3-62" aria-hidden="true"></a>    a &lt;- l</span>
+<span id="cb3-63"><a href="#cb3-63" aria-hidden="true"></a>    b &lt;- r</span>
+<span id="cb3-64"><a href="#cb3-64" aria-hidden="true"></a>  } p.<span class="fu">success</span>(a -&gt; b)</span>
+<span id="cb3-65"><a href="#cb3-65" aria-hidden="true"></a>  p.<span class="fu">future</span></span>
+<span id="cb3-66"><a href="#cb3-66" aria-hidden="true"></a>}</span></code></pre></div>
+<p>I can imagine the horror on the face of our random FP-dude, an <code>Array</code> (mutable), <code>var</code>s, nulls, side effects,… OMG. John would not approve such abomination. But before you panic, bare with me and let’s break it down.</p>
+<h3 id="the-what-how">The what &amp; how</h3>
+<p>The goal is to have a “bucket” of ready <code>B</code> elements, and whenever we have 2 or more <code>B</code>s in the “bucket”, we take a pair out of the bucket, compute <code>g</code> on it, and when <code>g</code> returns with a new <code>B</code>, we put it right back in the “bucket”, and we continue to do so, until only a single finite <code>B</code> element is left in the bucket. this is our return value.</p>
+<p>The way it is done, is simple. we have \(n\) <code>A</code> elements in the original sequence, each will be mapped to a single <code>B</code>, and since every 2 <code>B</code>s are used to generate a new <code>B</code>, we need room for another \(n-1\) <code>B</code>s in the bucket. Overall, \(2n-1\) elements, and our “bucket” can be just a simple <code>Array</code>. We also want to parallelize the computation as much as we can, so some construct to handle the asynchronous nature of the computation is needed. I used a <code>Promise[B]</code> to store the result. So our “bucket” is simply an <code>Array[Promise[B]]</code> of size \(2n-1\).</p>
+<p>Have a look at the following figure:</p>
+<figure>
+<img src="https://raw.githubusercontent.com/hochgi/blog/1c691b03c3b12bcca29ab4a3f1803f6a5d3caed5/img/array_reduce_order.png" alt="" /><figcaption>pic</figcaption>
+</figure>
+<p>This illustrates the order of computation, when the order is:</p>
+<ol type="1">
+<li>as(2)</li>
+<li>as(1)</li>
+<li>g(as(2),as(1))</li>
+<li>as(3)</li>
+<li>as(0)</li>
+<li>g(g(as(2),as(1)),as(3))</li>
+<li>g(as(0),g(g(as(2),as(1)),as(3)))</li>
+</ol>
+<p>In the simple FP approach (traverse + reduce), same execution will result with the following computation order:</p>
+<ol type="1">
+<li>as(2)</li>
+<li>as(1)</li>
+<li>as(3)</li>
+<li>as(0)</li>
+<li>g(as(0,as(1))</li>
+<li>g(g(as(0,as(1)),as(2))</li>
+<li>g(g(g(as(0,as(1)),as(2)),as(3))</li>
+</ol>
+<p>Which means we don’t take advantage of the early completed computations.</p>
+<h3 id="more-benefits">More benefits</h3>
+<p>Using early completed computations isn’t the only reason I argue the suggested code is superior. It’s not just we start computations eagerly, implicitly it also means that heavy elements are left to be dealt in in the end, and we don’t need to reduce 10GB files at every step of the way<a href="#fn7" class="footnote-ref" id="fnref7" role="doc-noteref"><sup>7</sup></a>. We also get “fail fast” semantics; for example, if <code>g</code> fails for whatever reason on <code>as(2)</code> input, in the code I suggest, you fail fast since it is mapped directly as a failed <code>Future</code> result. Also, whenever a future completes, we have a side effect to clean up values that are not needed anymore, so we don’t leak.</p>
+<h2 id="bottom-line">Bottom line</h2>
+<p>What I try to emphasize using the example I showed, is that there are good reasons to write impure functional code. In cases like this, you enjoy both worlds. The interface is functional, it is referential transparent (as much as <code>Future</code> is considered referential transparent). Perhaps the above is achievable using pure functional style (I would love to know how. really!), but my gut is telling me it won’t be so simple. And as someone who works mostly in hybrid FP-OO teams, I can’t go full FP. Not at first anyway… Using Scala enables me to introduce a smoother transition into FP without getting my peers too angry or confused. It enables me to break the rules if I really need to. I wouldn’t sacrifice the impure parts of the language. I truly think they are too valuable.</p>
+<section class="footnotes" role="doc-endnotes">
+<hr />
+<ol>
+<li id="fn1" role="doc-endnote"><p>Other than maybe a tiny PR to <a href="https://github.com/coursier/coursier">coursier</a> which uses scalaz.<a href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn2" role="doc-endnote"><p>You are reading that person’s blog. Obviously :)<a href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn3" role="doc-endnote"><p>Actually, I’d bet he would use <code>Traversable</code> and <code>Task</code> over std lib’s <code>Future.traverse</code><a href="#fnref3" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn4" role="doc-endnote"><p>There are multiple ways to approach that problem, and actually, we ended up with another solution, that utilized akka-streams, merging multiple sources with a custom stage &amp; <code>scan</code>ing to output a stream of aggregated state in time order.<a href="#fnref4" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn5" role="doc-endnote"><p>Whenever I encounter such realization, I automatically translate it to property checks tests. So to test that <code>g</code> is lawful, all I needed is a very simple scalacheck test to test associativity &amp; commutativity.<a href="#fnref5" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn6" role="doc-endnote"><p>think about <code>b1 != b2</code>, which means that either <code>g(b1,b2) &gt; b1</code> and also <code>g(b1,b2) &gt; b2</code>, or that <code>b1</code> and <code>b2</code> already has order relation between them. It may be more obvious in some situations (and it was obvious in our case).<a href="#fnref6" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn7" role="doc-endnote"><p>Kind of reminds me of the <a href="https://en.wikipedia.org/wiki/Matrix_chain_multiplication">matrix chain multiplication problem</a>.<a href="#fnref7" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+</ol>
+</section>

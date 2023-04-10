@@ -1,0 +1,67 @@
+<h2 id="every-end-is-a-new-beginning">Every end is a new beginning</h2>
+<p>For the past 6 years I’ve been a part of the <a href="https://github.com/thomsonreuters/CM-Well">CM-Well</a> development team. I’m writing this post with lot’s of mixed feelings. Working on CM-Well has been an awesome experience! I got a chance to work with so many amazing people. But now it’s time to move on, and I’m excited to start a new gig.</p>
+<h2 id="cm-well---the-early-days">CM-Well - the early days</h2>
+<p>Last year we open-sourced CM-Well, and released the code on github. Doing so involved cleaning up the code, and getting rid off the commit history. Many team members who contributed a lot to the success of the project are not recognized. So, to get it out in the open, I opened the old repo, which has commits up until July last year, and I’m sharing some stats<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a>.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true"></a>$ <span class="fu">git</span> shortlog -sn --all</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true"></a>  <span class="ex">2697</span>  Gilad Hoch</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true"></a>  <span class="ex">1015</span>  yaakov</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true"></a>   <span class="ex">954</span>  michael</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true"></a>   <span class="ex">914</span>  israel</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true"></a>   <span class="ex">739</span>  Israel</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true"></a>   <span class="ex">720</span>  Vadim.Punski</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true"></a>   <span class="ex">580</span>  Gilad.Hoch</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true"></a>   <span class="ex">450</span>  Mark Zitnik</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true"></a>   <span class="ex">310</span>  Tzofia Shiftan</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true"></a>   <span class="ex">234</span>  Matan Keidar</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true"></a>   <span class="ex">222</span>  Mark.Zitnik</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true"></a>   <span class="ex">170</span>  Eli</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true"></a>   <span class="ex">125</span>  Yaakov Breuer</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true"></a>   <span class="ex">102</span>  Michael.Irzh</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true"></a>    <span class="ex">95</span>  Michael</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true"></a>    <span class="ex">94</span>  Israel Klein</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true"></a>    <span class="ex">87</span>  Tzofia.Shiftan</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true"></a>    <span class="ex">58</span>  Eli Orzitzer</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true"></a>    <span class="ex">54</span>  Michael Irzh</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true"></a>    <span class="ex">44</span>  Builder</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true"></a>    <span class="ex">42</span>  gilad</span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true"></a>    <span class="ex">31</span>  DockerBuilder</span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true"></a>    <span class="ex">22</span>  dudi</span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true"></a>    <span class="ex">14</span>  Dudi</span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true"></a>    <span class="ex">14</span>  Dudi Landau</span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true"></a>    <span class="ex">14</span>  Yoni.Mataraso</span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true"></a>    <span class="ex">10</span>  matan</span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true"></a>     <span class="ex">9</span>  tserver</span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true"></a>     <span class="ex">8</span>  Liorw</span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true"></a>     <span class="ex">5</span>  Liya.Katz</span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true"></a>     <span class="ex">4</span>  israel klein</span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true"></a>     <span class="ex">2</span>  Shachar.Ben-Zeev</span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true"></a>     <span class="ex">2</span>  Yoni Mataraso</span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true"></a>     <span class="ex">2</span>  builder</span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true"></a>     <span class="ex">1</span>  James Howlett</span>
+<span id="cb1-37"><a href="#cb1-37" aria-hidden="true"></a>     <span class="ex">1</span>  Yaakov</span></code></pre></div>
+<p>These are just the commits in the old repo, not including any new commits in github. I also created visualizations using <a href="http://gource.io">Gource</a> for the old repo.</p>
+<p>The first has files fading, and focuses on the contributors:</p>
+<iframe style="display: block; margin: auto;" width="560" height="315" src="https://www.youtube.com/embed/qXBD3O9PvgI" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+<p>The second version gives an overview of the entire project:</p>
+<iframe style="display: block; margin: auto;" width="560" height="315" src="https://www.youtube.com/embed/zND6pyosMY4" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+<p>The project is active, and has a lot of work invested in it, as you can see from the videos. But it doesn’t quite show how CM-Well is used internally. So I fetched some random <code>access.log</code> file from one of the servers, and wrote a little something to convert the log into a <a href="http://logstalgia.io">logstalgia</a> acceptable format:</p>
+<p>https://github.com/hochgi/logstalgia-access-log-converter</p>
+<p>I took this opportunity to get to know <a href="http://www.lihaoyi.com/mill">mill</a> build tool, and some libraries I wanted to experiment with. Long story short, I got 10 minutes of real CM-Well action on a single node (which is part of a cluster that has 20 web servers in it - so you’re only getting 1/20th of the action), and made a visualization using <em>logstalgia</em> with:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true"></a>$ <span class="ex">logstalgia</span> -f -1280x720 --title <span class="st">&quot;CM-Well access.log visualization&quot;</span>                <span class="kw">\</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true"></a>    <span class="ex">--screen</span> 2 -p 0.2 -u 1 --background 75715e -x -g <span class="st">&quot;meta,URI=/meta/.*$,10&quot;</span>        <span class="kw">\</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true"></a>    <span class="ex">-g</span> <span class="st">&quot;SPARQL,URI=/_sp?.*$,30&quot;</span> -g <span class="st">&quot;_out,URI=/_out?.*$,10&quot;</span> -g <span class="st">&quot;_in,URI=/_in?.*$,10&quot;</span> <span class="kw">\</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true"></a>    <span class="ex">-g</span> <span class="st">&quot;misc,URI=/.*,40&quot;</span> --paddle-mode single --paddle-position 0.75                <span class="kw">\</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true"></a>    <span class="ex">--disable-progress</span> --font-size 25 --glow-duration 0.5 --glow-multiplier 2       <span class="kw">\</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true"></a>    <span class="ex">--glow-intensity</span> 0.25 converted-access.log</span></code></pre></div>
+<p>And the output:</p>
+<iframe style="display: block; margin: auto;" width="560" height="315" src="https://www.youtube.com/embed/vCy8QjjhojU" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+<p>I gotta say, it came out pretty neat!<a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a></p>
+<h2 id="goodbye">Goodbye</h2>
+<p>I suck at goodbyes, so let me just say that I really loved working on CM-Well. It is a great project, and I hope to see it thrive. I will keep track of it, and plan to contribute occasionally on my spare time.</p>
+<section class="footnotes" role="doc-endnotes">
+<hr />
+<ol>
+<li id="fn1" role="doc-endnote"><p>In the early days, we used SVN, and we converted the repo to git at some point, which is why you see some duplicated names (that, and also we may have also committed from multiple users).<a href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn2" role="doc-endnote"><p>Kinda get me into thinking I should write a logstash appender that streams real-time action directly into a logstalgia end point. It’s gotta be the coolest monitoring one can ask for…!<a href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+</ol>
+</section>

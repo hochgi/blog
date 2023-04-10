@@ -1,0 +1,179 @@
+<h1 id="and-how-it-led-to-interesting-code">and how it led to interesting code</h1>
+<p>One of the most interesting pieces of code in CM-Well, IMO, is the <a href="https://github.com/thomsonreuters/CM-Well/blob/3a9eae23c5d17d4b1606f604a1c822ce884d88df/server/cmwell-util/src/main/scala/cmwell/util/http/SimpleHttpClient.scala">http client util code</a>. In short, it defines an API for a http client, and wraps akka-http which serves as the “http client engine”. Why not just use akka’s API, you might ask…? Well, we’ll get there, but first, a bit of history. <em>(TL;DR: A story of why suffered from tightly coupled code, and how we solved it elegantly + code samples)</em></p>
+<h2 id="a-long-time-ago">A long time ago</h2>
+<p>(In a galaxy far far away) CM-Well was written mostly in java<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a> (oh boy…), only the web-service logic was written in scala. The scala eco-system looked very different compared to what it is today. The most popular scala web framework at the time was <a href="http://liftweb.net">lift</a>, which was much more relevant than <a href="http://playframework.com">play!</a> Back then play was very new, maybe 1.0 or 1.1, and was still written in java. So it was decided to write the CM-Well web service with lift. But not only the web service… You see, lift classes were already on the classpath. Especially lift’s <code>HttpSupport</code> from the testkit, which had reasonable API. So all of CM-Well’s integration tests were written using it. It served it’s purpose, and tests kept pilling up, until we decided to upgrade scala from 2.9 to 2.10. lift was holding us back, and play started to look more and more attractive. We replaced lift with play! but decided to rewrite the integration tests without using play’s testkit or http client. After all, what if down the road we would want to replace it with something else? We didn’t want to be tied up to much to the web framework, so we minimized our dependency in play as much as possible. For the integration tests, we decided to go with a popular scala http client instead. The infamous <a href="http://dispatch.databinder.net">Dispatch</a> (don’t judge… back then it was popular). For those who are not familiar with dispatch, it’s a scala http client library, which makes heavy use of symbolic operators (check out the <a href="http://www.flotsam.nl/dispatch-periodic-table.html">Periodic Table</a>). Other than making the code less readable with all those fancy operators to new-comers, it served it’s purpose pretty good. That is until… Yup. It was time to upgrade scala again, and move from version 2.10 to 2.11. And again, our integration tests (and other code that made use of an http client), were written with a library that didn’t move fast enough. It held us back, causing a “jar hell” of unwanted &amp; outdated dependencies… and we grew tired of all the weird operators. But no one wanted to rewrite all the tests again… that’s a lot of dirty work. We hacked, and managed to get by with using it only in tests, so at least we didn’t had the jar hell on our main artifacts classpath, just in tests. Other code in main artifacts that needed a http client, used whatever was on the classpath directly. Be it play’s WS, or <a href="http://spray.io">spray</a>’s client, it didn’t really mattered. But time went by, and tests kept pilling up, and it was way due to clean the code. Being a bit wiser from the bad experience, we decided to make sure that tests code will never hold us back again from changing libraries and frameworks. We decided to write a thin wrapper with a sane &amp; simple asynchronous http client API. but wrapper for what? well… it doesn’t matter. That was the whole point; if the wrapping layer is small enough, we can always change the underlying library easily, and won’t have to patch up thousands lines of testing code if we ever switch to another library. Anyway, we needed to pick up something, and at the time, we were really excited about the recent developments in akka. It was 2015, and the akka-stream &amp; akka-http experimental modules came out. We decided to check it out, but the experimental modules were too risky for production code, which made it a perfect candidate to serve in our tests as a dispatch replacement, without affecting production code. This was 2 birds in 1 stone - evaluating an interesting technology in it’s early stages, with real code, without risking anything crucial, and using our thin wrapper to decouple test’s logic from the http client library. <em>P.S. to be on the safe side, and for the sport of it, we started to implement the same thin API on top of <a href="https://github.com/AsyncHttpClient/async-http-client">ning’s AsyncHttpClient</a>, but never really continued with it, since akka-http got the job done perfectly. But some <a href="https://github.com/thomsonreuters/CM-Well/blob/3a9eae23c5d17d4b1606f604a1c822ce884d88df/server/cmwell-util/src/main/scala/cmwell/util/http/SimpleHttpClient.scala#L405-L487">remnants stayed commented out in the sources</a>, waiting for the day that will never come.</em></p>
+<h2 id="we-akka-http">We ❤ Akka-http</h2>
+<p>Choosing akka was challenging. It introduces this new concept of streams, which, at least in tests, we wanted to abstract away for simplicity. But then again, just consuming everything eagerly, hiding completely the reactive nature of the API, and returning a future of response when everything is done, is asking for performance troubles. We needed a simple default, with an easy way of exploiting the asynchrony &amp; reactive capabilities of akka-http. For that, we made heavy use of type classes, in a slightly adapted version of what is known as the <a href="http://spray.io/blog/2012-12-13-the-magnet-pattern">magnet pattern</a>.</p>
+<h2 id="the-gory-details">The gory details</h2>
+<p>Let’s see some code, shall we..? starting with the API itself:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true"></a><span class="kw">object</span> SimpleHttpClient {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true"></a>  <span class="co">// web sockets API is more complex, and out of the scope for this post,</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true"></a>  <span class="co">// but is shown here for completeness, as it is part of the API.</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true"></a>  <span class="co">// You are more than welcome to check out the source code.</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true"></a>  <span class="kw">def</span> ws[T : SimpleMessageHandler](uri: String,</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true"></a>         initiationMessage: T,</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true"></a>         subprotocol: Option[String] = None,</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true"></a>         queryParams: Seq[(String,String)] = Nil,</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true"></a>         headers: Seq[(String,String)] = Nil)(react: T =&gt; Option[T])</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true"></a>        (<span class="kw">implicit</span> ec: ExecutionContext,</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true"></a>         as: ActorSystem = <span class="kw">this</span>.<span class="fu">sys</span>,</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true"></a>         mat: Materializer = <span class="kw">this</span>.<span class="fu">mat</span>) = ...</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true"></a></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true"></a>  <span class="kw">def</span> get[T : SimpleResponseHandler](uri: String,</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true"></a>          queryParams: Seq[(String,String)] = Nil,</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true"></a>          headers: Seq[(String,String)] = Nil)</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true"></a>         (<span class="kw">implicit</span> ec: ExecutionContext,</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true"></a>          as: ActorSystem = <span class="kw">this</span>.<span class="fu">sys</span>,</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true"></a>          mat: Materializer = <span class="kw">this</span>.<span class="fu">mat</span>) = ...</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true"></a></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true"></a>  <span class="kw">def</span> put[T : SimpleResponseHandler](uri: String,</span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true"></a>          body: Body,</span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true"></a>          contentType: Option[String] = None,</span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true"></a>          queryParams: Seq[(String,String)] = Nil,</span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true"></a>          headers: Seq[(String,String)] = Nil)</span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true"></a>         (<span class="kw">implicit</span> ec: ExecutionContext,</span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true"></a>          as: ActorSystem = <span class="kw">this</span>.<span class="fu">sys</span>,</span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true"></a>          mat: Materializer = <span class="kw">this</span>.<span class="fu">mat</span>) = ...</span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true"></a></span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true"></a>  <span class="kw">def</span> post[T : SimpleResponseHandler](uri: String,</span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true"></a>           body: Body,</span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true"></a>           contentType: Option[String] = None,</span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true"></a>           queryParams: Seq[(String,String)] = Nil,</span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true"></a>           headers: Seq[(String,String)] = Nil)</span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true"></a>          (<span class="kw">implicit</span> ec: ExecutionContext,</span>
+<span id="cb1-37"><a href="#cb1-37" aria-hidden="true"></a>           as: ActorSystem = <span class="kw">this</span>.<span class="fu">sys</span>,</span>
+<span id="cb1-38"><a href="#cb1-38" aria-hidden="true"></a>           mat: Materializer = <span class="kw">this</span>.<span class="fu">mat</span>) = ...</span>
+<span id="cb1-39"><a href="#cb1-39" aria-hidden="true"></a></span>
+<span id="cb1-40"><a href="#cb1-40" aria-hidden="true"></a>  <span class="kw">def</span> delete[T : SimpleResponseHandler](uri: String,</span>
+<span id="cb1-41"><a href="#cb1-41" aria-hidden="true"></a>             queryParams: Seq[(String,String)] = Nil,</span>
+<span id="cb1-42"><a href="#cb1-42" aria-hidden="true"></a>             headers: Seq[(String,String)] = Nil)</span>
+<span id="cb1-43"><a href="#cb1-43" aria-hidden="true"></a>            (<span class="kw">implicit</span> ec: ExecutionContext,</span>
+<span id="cb1-44"><a href="#cb1-44" aria-hidden="true"></a>             as: ActorSystem = <span class="kw">this</span>.<span class="fu">sys</span>,</span>
+<span id="cb1-45"><a href="#cb1-45" aria-hidden="true"></a>             mat: Materializer = <span class="kw">this</span>.<span class="fu">mat</span>) = ...</span>
+<span id="cb1-46"><a href="#cb1-46" aria-hidden="true"></a></span>
+<span id="cb1-47"><a href="#cb1-47" aria-hidden="true"></a>}</span></code></pre></div>
+<p>Overall, this looks like a pretty straight forward http client API. Let’s try to clear the fog from the unclear parts: Each of the methods returns a <code>Future[SimpleResponse[T]]</code>. I know what you might be thinking… I said <strong>simple</strong> API, and here I am, showing some fancy code with weird classes, right…? I’ll list down what might be interesting here:</p>
+<ul>
+<li><code>implicit as: ActorSystem = this.sys</code> &amp; <code>mat: Materializer = this.mat</code></li>
+<li><code>Body</code></li>
+<li><code>SimpleResponse[T]</code> &amp; <code>SimpleResponseHandler</code></li>
+</ul>
+<h3 id="actorsystem-materializer">ActorSystem &amp; Materializer</h3>
+<p>In akka-http, in order to handle http requests &amp; reponses, you’ll need to get a hold of a <code>HttpExt</code>, which takes an <code>ActorSystem</code> in <code>Http</code>’s factory method. Also, a connection flow to build the request graph around it is needed. To make things simple, we use <code>superPool</code> which returns a flow that routes requests through cached (per host) connection pools, and is managed by akka. It needs a <code>Materializer</code>. We also need a <code>Materializer</code> for running a simple graph per request. something like:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true"></a>Source.<span class="fu">single</span>(request -&gt; context).<span class="fu">via</span>(connectionPool).<span class="fu">runWith</span>(Sink.<span class="fu">head</span>)</span></code></pre></div>
+<p>Which performs the request and return a <code>Future[Try[HttpResponse]]</code>. Lastly, we’ll need the <code>Materializer</code> also to handle akka’s <code>HttpResponse</code>, which returns the payload in the form of <code>Source[ByteString,_]</code>. Remember, we wanted to abstract away anything that binds us to the library, so we can’t leak (unless we want to, more on that is to follow) akka’s classes. Not <code>Source</code> nor <code>ByteString</code>. We need to convert it to something else. Anyway, as you can see, it’s needed. But if you pay attention, you’ll see it has default values. This let’s us provide reasonable defaults, which can be configured freely using standard typesafe’s config. The provided <code>reference.conf</code> only defines the bare minimum:</p>
+<pre class="nohighlight"><code>cmwell.util.http {
+  akka {
+    actor {
+      provider = &quot;akka.actor.LocalActorRefProvider&quot;
+    }
+    http {
+      host-connection-pool {
+        max-open-requests = 1024
+      }
+    }
+  }
+}</code></pre>
+<p>And as you might have already guessed, the provided actor system is configured using:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true"></a><span class="fu">ActorSystem</span>(<span class="st">&quot;SimpleHttpClient&quot;</span>,ConfigFactory.<span class="fu">load</span>().<span class="fu">getConfig</span>(<span class="st">&quot;cmwell.util.http&quot;</span>))</span></code></pre></div>
+<p>Also, the provided <code>Materializer</code> &amp; <code>ActorSystem</code> are <strong>LAZY</strong> (as in <code>lazy val</code>), So it won’t even get instantiated if this code is run within production code which makes sure to supply a fully configured <code>ActorSystem</code> &amp; <code>Materializer</code>. But, you might ask: isn’t this binds us to akka? well, technically, yes. in practice, materializer and actor system are passed implicitly, so it’s not written in code (keeping aside some very rare cases). I.E: in the tests, you don’t see any reference to any materializer or actor system, and we are still loosely coupled, thanks to scala being such a flexible language when it comes to defaults &amp; implicits.</p>
+<h3 id="body">Body</h3>
+<p>The <code>post</code> &amp; <code>put</code> methods also take a mysterious <code>body: Body</code>, so what is it? Of course, as the name suggests it’s the request body. But, you might ask: Should a user be troubled with creating such objects? The answer is no. The <code>Body</code> companion object hosts some pretty useful implicits:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true"></a><span class="kw">sealed</span> <span class="kw">trait</span> Body {</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true"></a>  <span class="kw">def</span> <span class="fu">entity</span>(contentType: Option[String]): RequestEntity</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true"></a>  <span class="kw">def</span> <span class="fu">contentType</span>(ct: String): akka.<span class="fu">http</span>.<span class="fu">scaladsl</span>.<span class="fu">model</span>.<span class="fu">ContentType</span> = ...</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true"></a>}</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true"></a></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true"></a><span class="kw">object</span> Body {</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true"></a>  <span class="kw">import</span> scala.<span class="fu">language</span>.<span class="fu">implicitConversions</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true"></a></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true"></a>  <span class="kw">implicit</span> <span class="kw">def</span> <span class="fu">apply</span>(body: String): Body = <span class="kw">new</span> <span class="fu">BodyFromString</span>(body)</span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true"></a>  <span class="kw">implicit</span> <span class="kw">def</span> <span class="fu">apply</span>(body: Array[Byte]): Body = <span class="kw">new</span> <span class="fu">BodyFromBytes</span>(body)</span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true"></a>  <span class="kw">implicit</span> <span class="kw">def</span> <span class="fu">apply</span>(body: ByteString): Body = <span class="kw">new</span> <span class="fu">BodyFromByteString</span>(body)</span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true"></a></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true"></a>  <span class="kw">private</span> <span class="kw">class</span> <span class="fu">BodyFromString</span>(body: String) <span class="kw">extends</span> Body {  ...  }</span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true"></a>  <span class="kw">private</span> <span class="kw">class</span> <span class="fu">BodyFromBytes</span>(body: Array[Byte]) <span class="kw">extends</span> Body {  ...  }</span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true"></a>  <span class="kw">private</span> <span class="kw">class</span> <span class="fu">BodyFromByteString</span>(body: ByteString) <span class="kw">extends</span> Body {  ...  }</span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true"></a>}</span></code></pre></div>
+<p>This means, that you may pass the body argument as whatever you want, be it a <code>String</code>, a <code>Array[Byte]</code> or even akka’s <code>ByteString</code>. And if we ever need something else, it’s very easy to add more automatically acceptable types. We can just add another implicit conversion in <code>Body</code>’s companion object. or, if it’s a special case, then just instantiate a new <code>Body</code> locally, or write your own implicit conversions.</p>
+<h3 id="simpleresponset-simpleresponsehandler">SimpleResponse[T] &amp; SimpleResponseHandler</h3>
+<p><code>SimpleResponse</code> is the reponse we get back from executing the request, it’s a pretty simple case class:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true"></a><span class="kw">object</span> SimpleResponse {</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true"></a></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true"></a>  <span class="kw">type</span> ContentType = String</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true"></a>  <span class="kw">type</span> ResponseBody[T] = (ContentType, T)</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true"></a></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true"></a>  ...</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true"></a>}</span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true"></a></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true"></a><span class="kw">case</span> <span class="kw">class</span> SimpleResponse[T : SimpleResponseHandler](status: Int,</span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true"></a>                                                     headers: Seq[(String,String)],</span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true"></a>                                                     body: ResponseBody[T]) {</span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true"></a>  <span class="kw">def</span> contentType = body._<span class="dv">1</span></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true"></a>  <span class="kw">def</span> payload = body._<span class="dv">2</span></span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true"></a></span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true"></a>  <span class="kw">override</span> <span class="kw">def</span> <span class="fu">toString</span>() = ...</span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true"></a>}</span></code></pre></div>
+<p>It has an <code>Int</code> for status, a <code>Seq[(String,String)]</code> for headers, and a <code>ResponseBody[T]</code>, which is just a tuple of the mimetype (<code>String</code>) and the body, which can be anything that has a <code>SimpleResponseHandler</code>. All methods in exposed API has a type parameter <code>T</code> that are context bound to <code>SimpleResponseHandler</code>, which is the type class responsible of generating the appropriate response for us from the response returned by underlying library - i.e: akka. It means we need an implicit <code>SimpleResponseHandler[T]</code> in scope. Now, please look carefully at the methods signature; none of the parameters has type <code>T</code>. So, you might think this means the compiler cannot infer the type, and user always have to explicitly write it down? The answer, is no. let’s try it out in the REPL:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true"></a>scala&gt; <span class="kw">val</span> res = SimpleHttpClient.<span class="fu">get</span>(<span class="st">&quot;http://google.com&quot;</span>)</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true"></a>res: scala.<span class="fu">concurrent</span>.<span class="fu">Future</span>[cmwell.<span class="fu">util</span>.<span class="fu">http</span>.<span class="fu">SimpleResponse</span>[Array[Byte]]] = ...</span></code></pre></div>
+<p>What happens here, is that there is a single implicit that’s available in <code>SimpleResponseHandler</code> companion, and thus is taken by the compiler (If only one implicit instance of <code>SimpleResponseHandler</code> for some <code>T</code> can be found, than that is what’s being picked up, regardless of what <code>T</code> is). This one implicit has the most general type for a response body. It is simply an <code>Array[Byte]</code>. So, if the reponse can fit in memory, it’ll be returned as an <code>Array[Byte]</code>:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true"></a><span class="kw">trait</span> SimpleResponseHandler[T] {</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true"></a>  <span class="kw">def</span> <span class="fu">mkStringRepr</span>(t: T): String</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true"></a>  <span class="kw">def</span> <span class="fu">mkResponseOf</span>(status: Int,</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true"></a>                   headers: Seq[(String,String)],</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true"></a>                   contentType: String,</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true"></a>                   dataBytes: Source[ByteString,Any])</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true"></a>                  (<span class="kw">implicit</span> ec: ExecutionContext): Future[SimpleResponse[T]]</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true"></a>}</span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true"></a></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true"></a><span class="kw">object</span> SimpleResponseHandler {</span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true"></a></span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true"></a>  <span class="kw">implicit</span> <span class="kw">object</span> ByteArrayHandler <span class="kw">extends</span> SimpleResponseHandler[Array[Byte]] {</span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true"></a>    ...</span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true"></a>  }</span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true"></a>}</span></code></pre></div>
+<p>But, if you want something else, all you have to do is import the appropriate implicit (more sensible implicit instances of <code>SimpleResponseHandler</code> can be found in <code>SimpleResponse.Implicits</code>:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true"></a><span class="kw">object</span> SimpleResponse {</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true"></a></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true"></a>  ...</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true"></a></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true"></a>  <span class="co">// if you want a SimpleResponse[T] for T != Array[Byte],</span></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true"></a>  <span class="co">// import a SimpleResponseHandler[T] from here (or implement your own)</span></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true"></a>  <span class="kw">object</span> Implicits {</span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true"></a></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true"></a>    <span class="kw">implicit</span> <span class="kw">object</span> InputStreamHandler <span class="kw">extends</span> SimpleResponseHandler[InputStream] {</span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true"></a>      ...</span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true"></a>    }</span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true"></a></span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true"></a>    <span class="kw">implicit</span> <span class="kw">object</span> UTF8StringHandler <span class="kw">extends</span> SimpleResponseHandler[String] {</span>
+<span id="cb9-14"><a href="#cb9-14" aria-hidden="true"></a>      ...</span>
+<span id="cb9-15"><a href="#cb9-15" aria-hidden="true"></a>    }</span>
+<span id="cb9-16"><a href="#cb9-16" aria-hidden="true"></a>  }</span>
+<span id="cb9-17"><a href="#cb9-17" aria-hidden="true"></a>}</span></code></pre></div>
+<p>So if response body cannot fit in memory, for instance, simply import the appropriate implicit handler:</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true"></a>scala&gt; <span class="kw">import</span> cmwell.<span class="fu">util</span>.<span class="fu">http</span>.<span class="fu">SimpleResponse</span>.<span class="fu">Implicits</span>.<span class="fu">InputStreamHandler</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true"></a><span class="kw">import</span> cmwell.<span class="fu">util</span>.<span class="fu">http</span>.<span class="fu">SimpleResponse</span>.<span class="fu">Implicits</span>.<span class="fu">InputStreamHandler</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true"></a></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true"></a>scala&gt; <span class="kw">val</span> res = SimpleHttpClient.<span class="fu">get</span>(<span class="st">&quot;http://google.com&quot;</span>)</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true"></a>res: scala.<span class="fu">concurrent</span>.<span class="fu">Future</span>[cmwell.<span class="fu">util</span>.<span class="fu">http</span>.<span class="fu">SimpleResponse</span>[java.<span class="fu">io</span>.<span class="fu">InputStream</span>]] = ..</span></code></pre></div>
+<p>It just works because imported implicits takes precedence over implicits defined in the type class’ companion. Of course, If you import more than one handler, you’ll have to explicitly mention the type, or you’ll get a compiler error for “ambiguous implicit values”.</p>
+<h2 id="nice-so-it-seems-pretty-solid.-what-else">Nice, so… it seems pretty solid. What else?</h2>
+<p>The implementation we have in CM-Well’s code base is far from complete:</p>
+<ul>
+<li>Not all http methods are defined (e.g: HEAD)</li>
+<li>One can think of way more sensible generic response handlers to add in <code>Implicits</code> object (e.g: one that simply returns the <code>Source[ByteString,_]</code> from akka’s response directly)</li>
+<li>Classes can be arranged better, in separate files.</li>
+</ul>
+<p>Basically, this API is being extended lazily, when we need to add something new, and is not a complete solution.</p>
+<h2 id="ok-lets-wrap-it-up">OK, let’s wrap it up</h2>
+<p>This post is already getting longer than I thought, and we haven’t covered web sockets API, or how we convert akka’s classes to simple types. So lets leave it as an exercise for the reader 😉. The bottom line of this post, is how we ended up with a nice API, which is very flexible, extendable, and implemented in not too many lines of code. The road was a bit bumpy, but the lesson learned was worth it.</p>
+<h2 id="p.s.">P.S.</h2>
+<p>If you want to get your hands dirty, we would love to get some PRs! (regarding the code shown here, or any other part of <a href="https://github.com/thomsonreuters/CM-Well">CM-Well</a>).</p>
+<section class="footnotes" role="doc-endnotes">
+<hr />
+<ol>
+<li id="fn1" role="doc-endnote"><p>In fact, CM-Well started out as a POC with python &amp; django, and only later was implemented in java &amp; scala.<a href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+</ol>
+</section>
