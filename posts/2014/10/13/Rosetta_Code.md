@@ -20,7 +20,6 @@ For i = 0 to f(n).length
 
 When I saw it, it reminded me SVG paths, so I thought, why not create a SVG image instead of ascii art? Turning right or left relatively with drawing of only straight lines fits perfectly to [SVG path lineTo command](http://www.w3.org/TR/SVG/paths.html#PathDataLinetoCommands). So, the idea is to convert a fibonacci word into a seqeunce of commands.
 
-    </div>
     <div width="100%" text-align="center">
     <svg height="320" width="410">
 <polygon points="250,0 190,80 230,50 230,140 140,140 170,100 90,160 170,220 140,180 230,180 230,270 190,240 250,320 310,240 270,270 270,180 360,180 330,220 410,160 330,100 360,140 270,140 270,50 310,80" style="fill:#ffc000;stroke:#cc4000;stroke-width:1" />
@@ -38,7 +37,6 @@ When I saw it, it reminded me SVG paths, so I thought, why not create a SVG imag
     </svg>
     </div>
 
-    <div class="markdown" style="display: none;">
 First thing I had to do, was to get the Fibonacci word. this can be easily achieved with an _Iterator_, note that I'm gonna show here a more complicated with better performance variant of the code I submitted to rosetta code.
 ```scala
 val it = Iterator.iterate((Seq('1'),Seq('0'))){
