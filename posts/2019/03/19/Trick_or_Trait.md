@@ -117,15 +117,15 @@ As you probably know, traits are not interfaces. A trait can hold non abstract m
 ## `this` aliasing?
 `this` aliasing isn't something new or unknown. There are many good reasons to do so[^footnote1], but for now, just know there are several ways to do it, with very subtle differences between them.
 ```scala
+trait A { self => ... }
 trait A { self: B => ... }
 trait A { this: B => ... }
 trait A { _: B => ... }
-trait A ( B => ... }
 ```
-In the first option, you give an alias to `this`,usually,  so you would be able to refer to it from an inner class (which is quite handy if you utilize path dependent types). Options 2 & 3 are equivalent as much as I know (please correct me if I'm wrong). The last option is unique, and I actually learned about it while writing this post. When you only use a type, you force the user to mixin the trait (`B` in this example) in his bottom type, but you cannot actually use any of it's members.
+In the first option, you give an alias to `this`, usually, so you would be able to refer to it from an inner class (which is quite handy if you utilize path dependent types). The second is interesting, it will force implementing classes to also mix in `B` trait. Options 3 & 4 are equivalent as much as I know (please correct me if I'm wrong).
 
 ## conclusion
-Adhering to the [principle of least power](http://www.lihaoyi.com/post/StrategicScalaStylePrincipleofLeastPower.html), you should choose the most restrictive approach you can get by with. If all you need is to know your trait is always mixed with another trait[^footnote2], use only a type (option 4). If you need to use another trait capabilities, but only from within a method, or in any way not during initialization, use self typing (options 2 & 3). If you also have inner classes and refers to `this` in the code, alias it as something else (convention is "self") to ease readability. If you depend on another trait during initialization, then extend it to ensure correct ordering in class linearization. But do it only if you really must.
+Adhering to the [principle of least power](http://www.lihaoyi.com/post/StrategicScalaStylePrincipleofLeastPower.html), you should choose the most restrictive approach you can get by with. If all you need is to know your trait is always mixed with another trait[^footnote2], use only a type (option 4). Also if you need to use another trait capabilities, but only from within a method, or in any way not during initialization, use self typing (options 2, 3, 4). If you also have inner classes and refers to `this` in the code, alias it as something else (convention is "self") to ease readability. If you depend on another trait during initialization, then extend it to ensure correct ordering in class linearization. But do it only if you really must.
 
 [^footnote1]: maybe more on that in a future post.
 
