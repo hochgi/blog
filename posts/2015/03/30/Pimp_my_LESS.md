@@ -3,30 +3,27 @@ well, here's a small tip you can use to make the experience not so bad. make les
 
 first, make sure you have [pygments](http://pygments.org) installed:
 
-```bash
+```sh
 user@pc:~$ sudo apt-get install python-pygments
 ```
 
-then, just dump a small script somewhere on your path (I use _~/bin/lezz_):
+then, just dump a small script somewhere on your path (I use `~/bin/lezz`):
 
 ```bash
 #! /bin/sh
 [ $# -ge 2 -a -f "$2" ] && input="$2" || input=""
 pygmentize -l $1 -f terminal256 -O full,style=monokai $input | less -R
 ```
-
-</div>
-<img src="https://raw.githubusercontent.com/hochgi/blog/master/img/yodawg.jpg"/>
-<div class="markdown" style="display: none;">
+![yo dawg](https://raw.githubusercontent.com/hochgi/blog/master/img/yodawg.jpg) \ 
 
 and that's it. now you can use it like:
 
-&lt;pre&gt;
+```sh
 lezz [lang] [file]
 
 # or recieve from stdin
 cat [file] | lezz [lang]
-&lt;/pre&gt;
+```
 
 e.g.
 

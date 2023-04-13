@@ -3,7 +3,7 @@ After some time working with scala async constructs, we've seen some repetitive 
 So here's a few snippets that may be useful for others:
 
 * **select** - selecting the first future that completes, if there are multiple already completed futures, selects one of those.
-given a collection of futures, returns a _Future[(Try[T],Coll[Future[T]])]_, or in words: a Future of tuple of the first completed future's _Try_ and the collection of the rest of the futures.
+given a collection of futures, returns a `Future[(Try[T],Coll[Future[T]])]`, or in words: a Future of tuple of the first completed future's `Try` and the collection of the rest of the futures.
 ```scala
 def select[T,Coll](fc: Coll)
           (implicit ec: ExecutionContext, 
@@ -25,10 +25,10 @@ def select[T,Coll](fc: Coll)
   }
 }
 ```
-_sidenote: there is a similar gist by [@viktorklang](https://twitter.com/viktorklang) which inspired this snippet (difference is on the collection return type). you can find it [here](https://gist.github.com/viktorklang/4488970)_
+_sidenote: there is a similar gist by [\@viktorklang](https://twitter.com/viktorklang) which inspired this snippet (difference is on the collection return type). you can find it [here](https://gist.github.com/viktorklang/4488970)_
 
 * **successes** - given a sequence of futures, return a future of a sequence containing all the futures that succeeded.
-one of the most frequently used _Future_'s methods in our code base, is _Future.sequence_. but sometimes, you'll need a "softer" method, that will collect all the succeeding futures' elements, and won't fail if a few futures failed.
+one of the most frequently used `Future`'s methods in our code base, is `Future.sequence`. but sometimes, you'll need a "softer" method, that will collect all the succeeding futures' elements, and won't fail if a few futures failed.
 ```scala
 def successes[A, M[X] <: Traversable[X]](in: M[Future[A]])
              (implicit ec: ExecutionContext, 
@@ -40,9 +40,9 @@ def successes[A, M[X] <: Traversable[X]](in: M[Future[A]])
   }.map(_.result())
 }
 ```
-_sidenote: this is almost the same as Future.sequence method. (check the scala source code)_
+_sidenote: this is almost the same as_ `Future.sequence` _method. (check the scala source code)_
 
-* **stream** - being async is great, but also being lazy. sometime, you'll want to convert part of your logic to use a regular collections instead of collections containing futures (you'll need a really good reason to do so). to do this efficiently, you'll want to convert a sequence of futures to a _Stream_, where each element in the stream is given as soon as it's corresponding future completes. i.e: sort a collection of futures by they're completion time. so here's how to do async → lazy conversion:
+* **stream** - being async is great, but also being lazy. sometime, you'll want to convert part of your logic to use a regular collections instead of collections containing futures (you'll need a really good reason to do so). to do this efficiently, you'll want to convert a sequence of futures to a `Stream`, where each element in the stream is given as soon as it's corresponding future completes. i.e: sort a collection of futures by they're completion time. so here's how to do async → lazy conversion:
 ```scala
 def stream[T,Coll](fc: Coll, timeout: FiniteDuration)
                   (implicit ec: ExecutionContext, 
@@ -62,7 +62,7 @@ def stream[T,Coll](fc: Coll, timeout: FiniteDuration)
 * **retry** - ~~sometime, you'll deal with futures that may fail, and you'll want to retry whatever task that created the future in the first place, with an optional delay between retries. here's a simple way to do it:~~
 The old snippets had many flaws. please refer to the [following blog post](/2016/03/async-scheduling-retrying-revised.html) to compare the version given here, with the new improved version. 
 
-* **travector** - The following is a tweak of Future.traverse. In our code, we wanted to improve performance, and decided to use internally in Vector instead of the more general seq (defaults to List). Vector is better for cache locality, and perform better with concatenations or appending to the end. So, we had in many places methods that take a Seq[Something], and return Future[Seq[SomethingElse]]. behind the scenes, it was Future.traverse that did the work. And now, we replaced it with: travector!
+* **travector** - The following is a tweak of `Future.traverse`. In our code, we wanted to improve performance, and decided to use internally in `Vector` instead of the more general seq (defaults to `List`). `Vector` is better for cache locality, and perform better with concatenations or appending to the end. So, we had in many places methods that take a `Seq[Something]`, and return `Future[Seq[SomethingElse]]`. behind the scenes, it was `Future.traverse` that did the work. And now, we replaced it with: `travector`!
 
 ```scala
 /** 
@@ -89,4 +89,4 @@ def travector[A, B, M[X] <: TraversableOnce[X]]
   }.map(_.result())
 ``` 
 
-The code is pretty much copied from Future.traverse (check & compare), but this simple little trick gained us some perf boost.
+The code is pretty much copied from `Future.traverse` (check & compare), but this simple little trick gained us some perf boost.

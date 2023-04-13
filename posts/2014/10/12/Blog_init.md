@@ -6,8 +6,8 @@ Just finished setting up everything: syntax highlighting & markdown. a little ex
 ### HTML
 
 ```html
-    &lt;h1&gt;HTML code&lt;/h1&gt;
-    &lt;div class="some"&gt;This is an example&lt;/div&gt;
+    <h1>HTML code</h1>
+    <div class="some">This is an example</div>
 ```
 ### Python
 

@@ -1,21 +1,19 @@
 <p>Ever found yourself browsing through some old legacy sources in some forsaken remote server with less? well, here’s a small tip you can use to make the experience not so bad. make less do more for you :)</p>
 <p>first, make sure you have <a href="http://pygments.org">pygments</a> installed:</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true"></a><span class="ex">user@pc</span>:~$ sudo apt-get install python-pygments</span></code></pre></div>
-<p>then, just dump a small script somewhere on your path (I use <em>~/bin/lezz</em>):</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true"></a><span class="ex">user@pc</span>:~$ sudo apt-get install python-pygments</span></code></pre></div>
+<p>then, just dump a small script somewhere on your path (I use <code>~/bin/lezz</code>):</p>
 <div class="sourceCode" id="cb2"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true"></a><span class="co">#! /bin/sh</span></span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true"></a><span class="bu">[</span> <span class="va">$#</span> <span class="ot">-ge</span> 2 <span class="ot">-a</span> <span class="ot">-f</span> <span class="st">&quot;</span><span class="va">$2</span><span class="st">&quot;</span><span class="bu"> ]</span> <span class="kw">&amp;&amp;</span> <span class="va">input=</span><span class="st">&quot;</span><span class="va">$2</span><span class="st">&quot;</span> <span class="kw">||</span> <span class="va">input=</span><span class="st">&quot;&quot;</span></span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true"></a><span class="ex">pygmentize</span> -l <span class="va">$1</span> -f terminal256 -O full,style=monokai <span class="va">$input</span> <span class="kw">|</span> <span class="fu">less</span> -R</span></code></pre></div>
-</div>
-<img src="https://raw.githubusercontent.com/hochgi/blog/master/img/yodawg.jpg"/>
-<div class="markdown" style="display: none;">
-
+<p><img src="https://raw.githubusercontent.com/hochgi/blog/master/img/yodawg.jpg" alt="yo dawg" />  </p>
 <p>and that’s it. now you can use it like:</p>
-<p>&lt;pre&gt; lezz [lang] [file]</p>
-<h1 id="or-recieve-from-stdin">or recieve from stdin</h1>
-<p>cat [file] | lezz [lang] &lt;/pre&gt;</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true"></a><span class="ex">lezz</span> [lang] [file]</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true"></a></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true"></a><span class="co"># or recieve from stdin</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true"></a><span class="fu">cat</span> [file] <span class="kw">|</span> <span class="ex">lezz</span> [lang]</span></code></pre></div>
 <p>e.g.</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true"></a><span class="ex">user@pc</span>:~$ lezz bash <span class="kw">`</span><span class="fu">which</span> lezz<span class="kw">`</span></span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true"></a><span class="ex">user@pc</span>:~$ cat <span class="kw">`</span><span class="fu">which</span> lezz<span class="kw">`</span> <span class="kw">|</span> <span class="ex">lezz</span> sh</span></code></pre></div>
+<div class="sourceCode" id="cb4"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true"></a><span class="ex">user@pc</span>:~$ lezz bash <span class="kw">`</span><span class="fu">which</span> lezz<span class="kw">`</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true"></a><span class="ex">user@pc</span>:~$ cat <span class="kw">`</span><span class="fu">which</span> lezz<span class="kw">`</span> <span class="kw">|</span> <span class="ex">lezz</span> sh</span></code></pre></div>
 <h5 id="p.s.">P.S.</h5>
 <p>if you don’t like the style, change it. instead of <em>monokai</em> you can use any style under:</p>
-<div class="sourceCode" id="cb4"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true"></a><span class="ex">user@pc</span>:~$ pygmentize -L style</span></code></pre></div>
+<div class="sourceCode" id="cb5"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true"></a><span class="ex">user@pc</span>:~$ pygmentize -L style</span></code></pre></div>
