@@ -3,27 +3,27 @@ Just finished setting up everything: syntax highlighting & markdown. a little ex
 
 ## Syntax highlighting is fun!
 
-###HTML
+### HTML
 
 ```html
     &lt;h1&gt;HTML code&lt;/h1&gt;
     &lt;div class="some"&gt;This is an example&lt;/div&gt;
 ```
-###Python
+### Python
 
 ```python
     def func():
       for i in [1, 2, 3]:
         print "%s" % i
 ```
-###Scala
+### Scala
 
 ```scala
     def fib(a: Int, b: Int): Stream[Int] = a #:: fib(b,a+b)
     fib(1,1).filter(_ % 2 == 0).take(10).toList
 ```
 
-###~~Java~~ (deprecated)
+### ~~Java~~ (deprecated)
 ```java
     class HelloWorldApp {
       public static void main(String[] args) {

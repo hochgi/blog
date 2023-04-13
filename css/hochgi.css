@@ -1,6 +1,11 @@
 /*
- hochgi style :)
+hochgi style :)
 */
+
+.post-body img {
+  max-width: 100%;
+  height: auto;
+}
 
 blockquote {
   font-family: Georgia, serif;
@@ -13,7 +18,8 @@ blockquote {
   font-style: italic;
 }
 
-/* blockquote::before {
+/*
+blockquote::before {
   content: "\201C";
   font-size: 3em;
   margin-right: 0.1em;
@@ -25,68 +31,88 @@ blockquote::after {
   font-size: 3em;
   margin-left: 0.1em;
   color: #ccc;
-} */
+}
+*/
 
 .footnote {
   vertical-align: super;
 }
 
-
 [id^="fn:"] {
-    font-size: 13px;
-    color: #837a71;
+  font-size: 13px;
+  color: #837a71;
 }
 
 html, body{
-	height:100%;
-	margin: 0px;
-	padding: 20px;
-	font-family: Arial, Helvetica, sans-serif;
+  height:100%;
+  margin: 0px;
+  padding: 20px;
+  font-family: ubuntu, Arial, Helvetica, sans-serif;
 }
 
 table {
-    border-collapse: collapse;
+  border-collapse: collapse;
 }
 
 th {
-	border: 1px solid #bab5b0;
-	text-align: center;
-	background-color: #efefef;
-	color: #0083bf;
+  border: 1px solid #bab5b0;
+  text-align: center;
+  background-color: #efefef;
+  color: #0083bf;
 }
 
 td {
-	border: 1px dotted #bab5b0;
-	height: 125%;
-    padding: 10px;
-    text-align: left;
-    color: #a05000;
+  border: 1px dotted #bab5b0;
+  height: 125%;
+  padding: 10px;
+  text-align: left;
+  color: #a05000;
 }
 
 H1, H2, H3, H4, H5, H6 {
-    color: #837a71;
+  color: #837a71;
 }
 
 H1 {
-    text-align: center;
-    font-weight: bold;
-    margin: 0 0 8px 0;
-    border-bottom: solid 3px #bab5b0;
-    width: 100%;
+  text-align: center;
+  font-weight: bold;
+  margin: 0 0 8px 0;
+  border-bottom: solid 3px #bab5b0;
+  width: 100%;
 }
 
-code:not(.sourceCode) {
-  border-radius: 3px;
-  padding: 3px;
+code:not(.sourceCode) a {
+  color: #40C0E0 !important; /* color for links */
+}
+
+code:not(.sourceCode) a:hover {
+  cursor: pointer !important;
+  color: #4fcfef !important;
+}
+
+.sharedCodeButton {
+  border-radius: 5px;
+  padding: 2px;
+  padding-left: 5px;
+  padding-right: 5px;
   box-shadow: 1px 1px 2px #8F867D;
   font-family: monospace;
   font-weight: bold;
+  font-size: 0.8em;
   margin: 0 8px;
   border-style: solid;
   border-color: #8F867D;
   border-width: 1px;
   background: -webkit-linear-gradient(top, #FAFAFA 0%, #EFEFEF 80%, #E0E0E0 100%);
-  color: #00A0A0;
+  color: #A05000;
+}
+
+.code:not(.sourceCode) {
+  composes: sharedCodeButton;
+}
+
+.gsc-search-button {
+  composes: sharedCodeButton;
 }
 
 .sourceCode {
@@ -96,10 +122,10 @@ code:not(.sourceCode) {
   border-radius: 10px;
   border-style: solid;
   border-width: 1px;
-  border-color: #666;
+  border-color: #181818;
   padding: 10px;
-  box-shadow: 2px 2px 8px #666;
-  background: #333;
+  box-shadow: 2px 2px 8px #282828;
+  background: #222;
   -webkit-text-size-adjust: none;
 }
 
@@ -116,7 +142,7 @@ code:not(.sourceCode) {
   padding: 0;
   box-shadow: none;
 }
-
+  
 .co {
   color: #75715e;
   font-style: italic;
@@ -136,7 +162,7 @@ code:not(.sourceCode) {
 .st {
   color: #ffb01c;
 }
-
+  
 .pp {
   color: #ff8000;
   font-weight: bold;
@@ -152,6 +178,7 @@ code:not(.sourceCode) {
   font-weight: bold;
 }
 
+.ot,
 .an {
   color: #00A0A0;
 }
@@ -165,7 +192,6 @@ code:not(.sourceCode) {
   font-weight: bold;
 }
 
-.ot,
 .al,
 .er {
   color: #b30045;
