@@ -22,11 +22,11 @@ And I don't want to see all the crossed out features removed from Scala:
 ## Scala is expressive
 I was recently asked, why I love Scala. I answered that with Scala, It's very easy for me to express exactly what I mean for the program to do, and that it's easy to expose beautiful (and safe) functional interface, while encapsulating impure logic and gaining the benefit of both worlds. I was then asked to give an example, of short code that I find easy to express in Scala, and hard(er) to write in other languages. I choose something I've written a while ago, and I find as a nice example for such FP-ish pattern.
 ```scala
-def foo[A,B](as:         Vector[A])
-            (f:    A  => Future[B])
-            (g: (B,B) => Future[B]): Future[B]
+def mapr[A,B](as:         Vector[A])
+             (f:    A  => Future[B])
+             (g: (B,B) => Future[B]): Future[B]
 ```
-So... what's so special about `foo`? The quick FP thinker will implement it with something like[^footnote3]:
+So... what's so special about `mapr`? A quick scala thinker will implement it with something like[^footnote3]:
 ```scala
 Future.traverse(as)(f)
       .flatMap(_ reduce g) // if g were (B,B) => B
@@ -56,9 +56,9 @@ whenever 2 `B`s are ready, any 2 `B`s, we can immediately apply `g` and start th
 
 So, without over abstracting, I came up with the following piece of code (brace yourselves):
 ```scala
-def foo[A, B](as: Vector[A])
-             (f: A => Future[B], g: (B,B) => Future[B])
-             (implicit executor: ExecutionContext): Future[B] = {
+def unorderedMapReduce[A, B](as: Vector[A])
+                            (f: A => Future[B], g: (B,B) => Future[B])
+                            (implicit executor: ExecutionContext): Future[B] = {
 
   val promises = Array.fill(2 * in.size - 1)(Promise.apply[B])
   var i = 0 // used for iteration optimization
@@ -136,9 +136,7 @@ Overall, \\(2n-1\\) elements, and our "bucket" can be just a simple `Array`. We 
 So our "bucket" is simply an `Array[Promise[B]]` of size \\(2n-1\\).
 
 Have a look at the following figure:
-
 ![pic](https://raw.githubusercontent.com/hochgi/blog/1c691b03c3b12bcca29ab4a3f1803f6a5d3caed5/img/array_reduce_order.png)
-
 This illustrates the order of computation, when the order is:
 
 1. as(2)

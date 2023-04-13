@@ -23,7 +23,7 @@ def retry[T](maxRetries: Int, waitBetweenRetries: Option[FiniteDuration] = None)
 
 Now, I want to suggest a better alternative. So, what's wrong with this first solution? well, let's start with showing the alternate suggestion, and compare the 2 snippets:
 
-Firstly, we need to get a hold of some simple scheduler. If you have akka's ActorSystem available, then you can use system.scheduler.scheduleOnce. If not, let's write simple (somewhat naïve) implementation:
+Firstly, we need to get a hold of some simple scheduler. If you have akka's `ActorSystem` available, then you can use `system.scheduler.scheduleOnce`. If not, let's write simple (somewhat naïve) implementation:
 
 ```scala
 object SimpleScheduler {
@@ -89,7 +89,7 @@ def retry[T](maxRetries: Int, delay: FiniteDuration = Duration.Zero)
 ```
 
 So what makes this implementation better?
-besides a minor API change (taking a FiniteDuration without unnecessary boxing of it in an Option). we have less threads contexts switches, and overall this is more efficient. In the first implementation we used:
+besides a minor API change (taking a `FiniteDuration` without unnecessary boxing of it in an `Option`). we have less threads contexts switches, and overall this is more efficient. In the first implementation we used:
 
 ```scala
 Future[Unit]{
@@ -97,8 +97,8 @@ Future[Unit]{
     Await.ready(Promise().future, ...
 ``` 
 
-If we'll count the number of "tasks" to execute at the expense of the given ExecutionContext, we'll see that we have the first Future.apply, and inside it's body, we call Await.ready, which uses blocking{...} behind the scenes, which means we allow the ExecutionContext to allocate an extra thread if needed, but all of these only to wait for a future which will never complete, and throw an Exception, and what we really need is only the time-out, so we can try the original given task again. A lot of unneeded work, and threads context-switch with the possibility to cause the allocation of a new thread.
+If we'll count the number of "tasks" to execute at the expense of the given `ExecutionContext`, we'll see that we have the first `Future.apply`, and inside it's body, we call `Await.ready`, which uses `blocking{...}` behind the scenes, which means we allow the `ExecutionContext` to allocate an extra thread if needed, but all of these only to wait for a future which will never complete, and throw an `Exception`, and what we really need is only the time-out, so we can try the original given task again. A lot of unneeded work, and threads context-switch with the possibility to cause the allocation of a new thread.
 
-Now, let's examine the revised implementation. we already have a thread to handle the execution when it is scheduled. we're just scheduling a task it should run. the only "extra" work we are doing, is creating a new Runnable, which when run, will complete a promise with the task's output.
+Now, let's examine the revised implementation. we already have a thread to handle the execution when it is scheduled. we're just scheduling a task it should run. the only "extra" work we are doing, is creating a new `Runnable`, which when run, will complete a promise with the task's output.
 
-One thing we must pay attention to, is that we must not perform any work at the expense of the scheduling thread. This thread should be available for other scheduling tasks. Note that I also added a regular scheduling method, in which the given (synchronous) task is wrapped inside a Future{...} block. this is to make sure the task is run at the expense of the given (implicitly) ExecutionContext, and not on the scheduling thread. 
+One thing we must pay attention to, is that we must not perform any work at the expense of the scheduling thread. This thread should be available for other scheduling tasks. Note that I also added a regular scheduling method, in which the given (synchronous) task is wrapped inside a `Future{...}` block. this is to make sure the task is run at the expense of the given (implicitly) `ExecutionContext`, and not on the scheduling thread. 

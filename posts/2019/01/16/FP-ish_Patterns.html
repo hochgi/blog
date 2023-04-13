@@ -8,10 +8,10 @@
 <p>And I don’t want to see all the crossed out features removed from Scala: <img src="https://raw.githubusercontent.com/hochgi/blog/c5547ad3ff6e2d60a9c73192a83908294499ad31/img/jdg05_liabilities.png" alt="liabilities?" /></p>
 <h2 id="scala-is-expressive">Scala is expressive</h2>
 <p>I was recently asked, why I love Scala. I answered that with Scala, It’s very easy for me to express exactly what I mean for the program to do, and that it’s easy to expose beautiful (and safe) functional interface, while encapsulating impure logic and gaining the benefit of both worlds. I was then asked to give an example, of short code that I find easy to express in Scala, and hard(er) to write in other languages. I choose something I’ve written a while ago, and I find as a nice example for such FP-ish pattern.</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true"></a><span class="kw">def</span> foo[A,B](as:         Vector[A])</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true"></a>            (f:    A  =&gt; Future[B])</span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true"></a>            (g: (B,B) =&gt; Future[B]): Future[B]</span></code></pre></div>
-<p>So… what’s so special about <code>foo</code>? The quick FP thinker will implement it with something like<a href="#fn3" class="footnote-ref" id="fnref3" role="doc-noteref"><sup>3</sup></a>:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true"></a><span class="kw">def</span> mapr[A,B](as:         Vector[A])</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true"></a>             (f:    A  =&gt; Future[B])</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true"></a>             (g: (B,B) =&gt; Future[B]): Future[B]</span></code></pre></div>
+<p>So… what’s so special about <code>mapr</code>? A quick scala thinker will implement it with something like<a href="#fn3" class="footnote-ref" id="fnref3" role="doc-noteref"><sup>3</sup></a>:</p>
 <div class="sourceCode" id="cb2"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true"></a>Future.<span class="fu">traverse</span>(as)(f)</span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true"></a>      .<span class="fu">flatMap</span>(_ reduce g) <span class="co">// if g were (B,B) =&gt; B</span></span></code></pre></div>
 <p>And it can be fine, considering the usecase. It wasn’t fine in our case.</p>
@@ -27,9 +27,9 @@
 <p>Well, that FP-programmer is actually right. and all that high gibberish talk actually has solid foundations. And in fact, that function <code>g</code> over <code>B</code> I just described does define a semilattice. <code>B</code>s has partial ordering<a href="#fn6" class="footnote-ref" id="fnref6" role="doc-noteref"><sup>6</sup></a>, <code>g</code> acts as the “join” operation, and we even have an identity element (the empty time series), so it is even a <em>“Bounded Semilattice”</em>.</p>
 <p>But this is totally irrelevant and out of the question’s scope. Remember, we are working in an OO organization. If we start defining abstractions over semilattices (or maybe there are ones in cats or scalaz libraries? I really don’t know), The code will become one giant pile of gibberish in the eyes of my coworkers. And we don’t even need it. What is needed, with the realization that <code>g</code> is associative &amp; commutative, is a very natural optimization that pops to mind: why wait for all <code>A =&gt; B</code> transformations? whenever 2 <code>B</code>s are ready, any 2 <code>B</code>s, we can immediately apply <code>g</code> and start the merge process.</p>
 <p>So, without over abstracting, I came up with the following piece of code (brace yourselves):</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true"></a><span class="kw">def</span> foo[A, B](as: Vector[A])</span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true"></a>             (f: A =&gt; Future[B], g: (B,B) =&gt; Future[B])</span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true"></a>             (<span class="kw">implicit</span> executor: ExecutionContext): Future[B] = {</span>
+<div class="sourceCode" id="cb3"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true"></a><span class="kw">def</span> unorderedMapReduce[A, B](as: Vector[A])</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true"></a>                            (f: A =&gt; Future[B], g: (B,B) =&gt; Future[B])</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true"></a>                            (<span class="kw">implicit</span> executor: ExecutionContext): Future[B] = {</span>
 <span id="cb3-4"><a href="#cb3-4" aria-hidden="true"></a></span>
 <span id="cb3-5"><a href="#cb3-5" aria-hidden="true"></a>  <span class="kw">val</span> promises = Array.<span class="fu">fill</span>(<span class="dv">2</span> * in.<span class="fu">size</span> - <span class="dv">1</span>)(Promise.<span class="fu">apply</span>[B])</span>
 <span id="cb3-6"><a href="#cb3-6" aria-hidden="true"></a>  <span class="kw">var</span> i = <span class="dv">0</span> <span class="co">// used for iteration optimization</span></span>
@@ -97,11 +97,7 @@
 <h3 id="the-what-how">The what &amp; how</h3>
 <p>The goal is to have a “bucket” of ready <code>B</code> elements, and whenever we have 2 or more <code>B</code>s in the “bucket”, we take a pair out of the bucket, compute <code>g</code> on it, and when <code>g</code> returns with a new <code>B</code>, we put it right back in the “bucket”, and we continue to do so, until only a single finite <code>B</code> element is left in the bucket. this is our return value.</p>
 <p>The way it is done, is simple. we have \(n\) <code>A</code> elements in the original sequence, each will be mapped to a single <code>B</code>, and since every 2 <code>B</code>s are used to generate a new <code>B</code>, we need room for another \(n-1\) <code>B</code>s in the bucket. Overall, \(2n-1\) elements, and our “bucket” can be just a simple <code>Array</code>. We also want to parallelize the computation as much as we can, so some construct to handle the asynchronous nature of the computation is needed. I used a <code>Promise[B]</code> to store the result. So our “bucket” is simply an <code>Array[Promise[B]]</code> of size \(2n-1\).</p>
-<p>Have a look at the following figure:</p>
-<figure>
-<img src="https://raw.githubusercontent.com/hochgi/blog/1c691b03c3b12bcca29ab4a3f1803f6a5d3caed5/img/array_reduce_order.png" alt="" /><figcaption>pic</figcaption>
-</figure>
-<p>This illustrates the order of computation, when the order is:</p>
+<p>Have a look at the following figure: <img src="https://raw.githubusercontent.com/hochgi/blog/1c691b03c3b12bcca29ab4a3f1803f6a5d3caed5/img/array_reduce_order.png" alt="pic" /> This illustrates the order of computation, when the order is:</p>
 <ol type="1">
 <li>as(2)</li>
 <li>as(1)</li>
