@@ -62,12 +62,9 @@ Well, MathJax already works great, and if I only add MathJax, the integration wi
 I used [`pandoc`](https://pandoc.org/) to convert the markdown files to HTML. Unfortunately, syntax highlight for scala code with pandoc isn't great as well, but I figured I could easily just patch the HTML output directly. I decided this is good enough for now and I should stop shaving this yak. Since I need to touch the HTML output a bit[^footnote3], I figured I should commit it to the blog repo as well.
 
 ### What's next?
-So now the blog is up and running again. All posts were converted, and everything works well. I will probably change the theme sometime soon (I chose the first thing just to get on with the tweaks). I also noticed some "inacuracies[^footnote4]" I should fix in some old posts. Perhaps archive the less relevant topics. But I also noticed many drafts I started and never finished over the years:
+So now the blog is up and running again. All posts were converted, and everything works well. I will probably change the theme sometime soon (I chose the first thing just to get on with the tweaks). I also noticed some "inacuracies[^footnote4]" I should fix in some old posts. Perhaps archive the less relevant topics. But I also noticed many drafts I started and never finished over the years[^footnote5]:
 ![draft posts](https://raw.githubusercontent.com/hochgi/blog/master/img/facelift_02.png)
-There's some interesting ideas in these drafts I should definately write about. I guess we'll see soon.
-
-
-
+I guess we'll see soon.
 
 
 [^footnote1]: I can no longer find the original sources, but I do give credit (with mostly broken links) in the [first blog post](http://blog.hochgi.com/2014/10/document.html).
@@ -77,3 +74,5 @@ There's some interesting ideas in these drafts I should definately write about. 
 [^footnote3]: Some MathJax expressions contained stuff that `pandoc` "rendered" as HTML wrongly, and I needed to "undo" these.
 
 [^footnote4]: I guess the blog stays true to is name ;)
+
+[^footnote5]: There's some interesting ideas in these drafts I should definately write about. 
