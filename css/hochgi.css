@@ -1,6 +1,9 @@
 /*
 hochgi style :)
 */
+figcaption {
+  color: #777
+}
 
 .post-body img {
   max-width: 100%;
