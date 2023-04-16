@@ -1,17 +1,17 @@
 <p>In my previous blog post, <a href="/2015/09/useful-async-scala-snippets.html">useful async scala snippets</a>, I described a way to retry an asynchronous task that may fail. The code Iv’e suggested was:</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true"></a><span class="kw">def</span> retry[T](maxRetries: Int, waitBetweenRetries: Option[FiniteDuration] = None)</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true"></a>            (task: =&gt;Future[T])</span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true"></a>            (<span class="kw">implicit</span> ec: ExecutionContext): Future[T] = {</span>
+<div class="sourceCode" id="cb1"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true"></a><span class="kw">def</span> <span class="fu">retry</span>[<span class="dt">T</span>](maxRetries: <span class="dt">Int</span>, waitBetweenRetries: <span class="dt">Option</span>[<span class="dt">FiniteDuration</span>] = <span class="dt">None</span>)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true"></a>            (task: =&gt;<span class="dt">Future</span>[<span class="dt">T</span>])</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true"></a>            (<span class="kw">implicit</span> ec: <span class="dt">ExecutionContext</span>): <span class="dt">Future</span>[<span class="dt">T</span>] = {</span>
 <span id="cb1-4"><a href="#cb1-4" aria-hidden="true"></a>  <span class="fu">require</span>(maxRetries &gt; <span class="dv">0</span>, <span class="st">&quot;maxRetries must be positive&quot;</span>)</span>
 <span id="cb1-5"><a href="#cb1-5" aria-hidden="true"></a>  <span class="kw">if</span>(maxRetries &gt; <span class="dv">1</span>) task.<span class="fu">recoverWith</span>{</span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true"></a>    <span class="kw">case</span> t: Throwable =&gt; waitBetweenRetries <span class="kw">match</span> {</span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true"></a>      <span class="kw">case</span> None =&gt; <span class="fu">retry</span>(maxRetries - <span class="dv">1</span>)(task)</span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true"></a>      <span class="kw">case</span> Some(waitTime) =&gt; Future[Unit]{</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true"></a>    <span class="kw">case</span> t: <span class="dt">Throwable</span> =&gt; waitBetweenRetries <span class="kw">match</span> {</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true"></a>      <span class="kw">case</span> <span class="dt">None</span> =&gt; <span class="fu">retry</span>(maxRetries - <span class="dv">1</span>)(task)</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true"></a>      <span class="kw">case</span> <span class="dt">Some</span>(waitTime) =&gt; <span class="dt">Future</span>[<span class="dt">Unit</span>]{</span>
 <span id="cb1-9"><a href="#cb1-9" aria-hidden="true"></a>        <span class="kw">try</span> {</span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true"></a>          Await.<span class="fu">ready</span>(<span class="fu">Promise</span>().<span class="fu">future</span>, waitTime)</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true"></a>          <span class="dt">Await</span>.<span class="fu">ready</span>(<span class="dt">Promise</span>().<span class="fu">future</span>, waitTime)</span>
 <span id="cb1-11"><a href="#cb1-11" aria-hidden="true"></a>        }</span>
 <span id="cb1-12"><a href="#cb1-12" aria-hidden="true"></a>        <span class="kw">catch</span> {</span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true"></a>          <span class="kw">case</span> _: TimeoutException =&gt; ()</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true"></a>          <span class="kw">case</span> _: <span class="dt">TimeoutException</span> =&gt; ()</span>
 <span id="cb1-14"><a href="#cb1-14" aria-hidden="true"></a>        }</span>
 <span id="cb1-15"><a href="#cb1-15" aria-hidden="true"></a>      }.<span class="fu">flatMap</span>(_ =&gt; <span class="fu">retry</span>(maxRetries - <span class="dv">1</span>, waitBetweenRetries)(task))</span>
 <span id="cb1-16"><a href="#cb1-16" aria-hidden="true"></a>    }</span>
@@ -19,24 +19,24 @@
 <span id="cb1-18"><a href="#cb1-18" aria-hidden="true"></a>}</span></code></pre></div>
 <p>Now, I want to suggest a better alternative. So, what’s wrong with this first solution? well, let’s start with showing the alternate suggestion, and compare the 2 snippets:</p>
 <p>Firstly, we need to get a hold of some simple scheduler. If you have akka’s <code>ActorSystem</code> available, then you can use <code>system.scheduler.scheduleOnce</code>. If not, let’s write simple (somewhat naïve) implementation:</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true"></a><span class="kw">object</span> SimpleScheduler {</span>
+<div class="sourceCode" id="cb2"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true"></a><span class="kw">object</span> <span class="dt">SimpleScheduler</span> {</span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true"></a>  <span class="co">// if we never schedule a job, we shouldn&#39;t waste the resources. </span></span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true"></a>  <span class="co">// So let&#39;s define our thread pool lazily.</span></span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true"></a>  <span class="kw">private</span>[<span class="kw">this</span>] <span class="kw">lazy</span> <span class="kw">val</span> timer = java.<span class="fu">util</span>.<span class="fu">concurrent</span>.<span class="fu">Executors</span>.<span class="fu">newScheduledThreadPool</span>(<span class="dv">1</span>)</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true"></a>  <span class="kw">private</span>[<span class="kw">this</span>] <span class="kw">lazy</span> <span class="kw">val</span> timer = java.<span class="fu">util</span>.<span class="fu">concurrent</span>.<span class="dt">Executors</span>.<span class="fu">newScheduledThreadPool</span>(<span class="dv">1</span>)</span>
 <span id="cb2-5"><a href="#cb2-5" aria-hidden="true"></a></span>
-<span id="cb2-6"><a href="#cb2-6" aria-hidden="true"></a>  <span class="kw">def</span> schedule[T](duration: FiniteDuration)</span>
-<span id="cb2-7"><a href="#cb2-7" aria-hidden="true"></a>                 (body: =&gt; T)</span>
-<span id="cb2-8"><a href="#cb2-8" aria-hidden="true"></a>                 (<span class="kw">implicit</span> executionContext: ExecutionContext): Future[T] = {</span>
-<span id="cb2-9"><a href="#cb2-9" aria-hidden="true"></a>    <span class="kw">val</span> p = Promise[T]()</span>
-<span id="cb2-10"><a href="#cb2-10" aria-hidden="true"></a>    timer.<span class="fu">schedule</span>(<span class="kw">new</span> Runnable {</span>
-<span id="cb2-11"><a href="#cb2-11" aria-hidden="true"></a>      <span class="kw">override</span> <span class="kw">def</span> <span class="fu">run</span>(): Unit = {</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true"></a>  <span class="kw">def</span> <span class="fu">schedule</span>[<span class="dt">T</span>](duration: <span class="dt">FiniteDuration</span>)</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true"></a>                 (body: =&gt; <span class="dt">T</span>)</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true"></a>                 (<span class="kw">implicit</span> executionContext: <span class="dt">ExecutionContext</span>): <span class="dt">Future</span>[<span class="dt">T</span>] = {</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true"></a>    <span class="kw">val</span> p = <span class="dt">Promise</span>[<span class="dt">T</span>]()</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true"></a>    timer.<span class="fu">schedule</span>(<span class="kw">new</span> <span class="dt">Runnable</span> {</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true"></a>      <span class="kw">override</span> <span class="kw">def</span> <span class="fu">run</span>(): <span class="dt">Unit</span> = {</span>
 <span id="cb2-12"><a href="#cb2-12" aria-hidden="true"></a>        <span class="co">// body may be expensive to compute, </span></span>
 <span id="cb2-13"><a href="#cb2-13" aria-hidden="true"></a>        <span class="co">// and must not be run in our only timer thread expense,</span></span>
 <span id="cb2-14"><a href="#cb2-14" aria-hidden="true"></a>        <span class="co">// so we compute the task inside a `Future`,</span></span>
 <span id="cb2-15"><a href="#cb2-15" aria-hidden="true"></a>        <span class="co">// and make it run on the expense of the given executionContext.</span></span>
-<span id="cb2-16"><a href="#cb2-16" aria-hidden="true"></a>        p.<span class="fu">completeWith</span>(Future(body)(executionContext))</span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true"></a>        p.<span class="fu">completeWith</span>(<span class="dt">Future</span>(body)(executionContext))</span>
 <span id="cb2-17"><a href="#cb2-17" aria-hidden="true"></a>      }</span>
-<span id="cb2-18"><a href="#cb2-18" aria-hidden="true"></a>    },duration.<span class="fu">toMillis</span>,java.<span class="fu">util</span>.<span class="fu">concurrent</span>.<span class="fu">TimeUnit</span>.<span class="fu">MILLISECONDS</span>)</span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true"></a>    },duration.<span class="fu">toMillis</span>,java.<span class="fu">util</span>.<span class="fu">concurrent</span>.<span class="dt">TimeUnit</span>.<span class="dt">MILLISECONDS</span>)</span>
 <span id="cb2-19"><a href="#cb2-19" aria-hidden="true"></a>    p.<span class="fu">future</span></span>
 <span id="cb2-20"><a href="#cb2-20" aria-hidden="true"></a>  }</span>
 <span id="cb2-21"><a href="#cb2-21" aria-hidden="true"></a></span>
@@ -48,12 +48,12 @@
 <span id="cb2-27"><a href="#cb2-27" aria-hidden="true"></a>  <span class="co">//   Future.successful(result)</span></span>
 <span id="cb2-28"><a href="#cb2-28" aria-hidden="true"></a>  <span class="co">// }}}</span></span>
 <span id="cb2-29"><a href="#cb2-29" aria-hidden="true"></a>  <span class="co">// remember we only have a single Thread to schedule all tasks.</span></span>
-<span id="cb2-30"><a href="#cb2-30" aria-hidden="true"></a>  <span class="kw">def</span> scheduleFuture[T](duration: FiniteDuration)</span>
-<span id="cb2-31"><a href="#cb2-31" aria-hidden="true"></a>                       (body: =&gt; Future[T]): Future[T] = {</span>
-<span id="cb2-32"><a href="#cb2-32" aria-hidden="true"></a>    <span class="kw">val</span> p = Promise[T]()</span>
-<span id="cb2-33"><a href="#cb2-33" aria-hidden="true"></a>    timer.<span class="fu">schedule</span>(<span class="kw">new</span> Runnable {</span>
-<span id="cb2-34"><a href="#cb2-34" aria-hidden="true"></a>      <span class="kw">override</span> <span class="kw">def</span> <span class="fu">run</span>(): Unit = p.<span class="fu">completeWith</span>(body)</span>
-<span id="cb2-35"><a href="#cb2-35" aria-hidden="true"></a>    },duration.<span class="fu">toMillis</span>,java.<span class="fu">util</span>.<span class="fu">concurrent</span>.<span class="fu">TimeUnit</span>.<span class="fu">MILLISECONDS</span>)</span>
+<span id="cb2-30"><a href="#cb2-30" aria-hidden="true"></a>  <span class="kw">def</span> <span class="fu">scheduleFuture</span>[<span class="dt">T</span>](duration: <span class="dt">FiniteDuration</span>)</span>
+<span id="cb2-31"><a href="#cb2-31" aria-hidden="true"></a>                       (body: =&gt; <span class="dt">Future</span>[<span class="dt">T</span>]): <span class="dt">Future</span>[<span class="dt">T</span>] = {</span>
+<span id="cb2-32"><a href="#cb2-32" aria-hidden="true"></a>    <span class="kw">val</span> p = <span class="dt">Promise</span>[<span class="dt">T</span>]()</span>
+<span id="cb2-33"><a href="#cb2-33" aria-hidden="true"></a>    timer.<span class="fu">schedule</span>(<span class="kw">new</span> <span class="dt">Runnable</span> {</span>
+<span id="cb2-34"><a href="#cb2-34" aria-hidden="true"></a>      <span class="kw">override</span> <span class="kw">def</span> <span class="fu">run</span>(): <span class="dt">Unit</span> = p.<span class="fu">completeWith</span>(body)</span>
+<span id="cb2-35"><a href="#cb2-35" aria-hidden="true"></a>    },duration.<span class="fu">toMillis</span>,java.<span class="fu">util</span>.<span class="fu">concurrent</span>.<span class="dt">TimeUnit</span>.<span class="dt">MILLISECONDS</span>)</span>
 <span id="cb2-36"><a href="#cb2-36" aria-hidden="true"></a>    p.<span class="fu">future</span></span>
 <span id="cb2-37"><a href="#cb2-37" aria-hidden="true"></a>  }</span>
 <span id="cb2-38"><a href="#cb2-38" aria-hidden="true"></a>}</span></code></pre></div>
@@ -63,22 +63,22 @@
 <span id="cb3-3"><a href="#cb3-3" aria-hidden="true"></a> <span class="co">*</span> <span class="an">@param delay </span><span class="co">&quot;</span>cool<span class="co">-</span>down<span class="co">&quot;</span> wait period</span>
 <span id="cb3-4"><a href="#cb3-4" aria-hidden="true"></a> <span class="co">*</span> <span class="an">@param task </span>the task to run</span>
 <span id="cb3-5"><a href="#cb3-5" aria-hidden="true"></a> <span class="co">*/</span></span>
-<span id="cb3-6"><a href="#cb3-6" aria-hidden="true"></a><span class="kw">def</span> retry[T](maxRetries: Int, delay: FiniteDuration = Duration.<span class="fu">Zero</span>)</span>
-<span id="cb3-7"><a href="#cb3-7" aria-hidden="true"></a>            (task: =&gt; Future[T])</span>
-<span id="cb3-8"><a href="#cb3-8" aria-hidden="true"></a>            (<span class="kw">implicit</span> ec: ExecutionContext): Future[T] = {</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true"></a><span class="kw">def</span> <span class="fu">retry</span>[<span class="dt">T</span>](maxRetries: <span class="dt">Int</span>, delay: <span class="dt">FiniteDuration</span> = <span class="dt">Duration</span>.<span class="dt">Zero</span>)</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true"></a>            (task: =&gt; <span class="dt">Future</span>[<span class="dt">T</span>])</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true"></a>            (<span class="kw">implicit</span> ec: <span class="dt">ExecutionContext</span>): <span class="dt">Future</span>[<span class="dt">T</span>] = {</span>
 <span id="cb3-9"><a href="#cb3-9" aria-hidden="true"></a>  <span class="fu">require</span>(maxRetries &gt; <span class="dv">0</span>, <span class="st">&quot;maxRetries must be positive&quot;</span>)</span>
-<span id="cb3-10"><a href="#cb3-10" aria-hidden="true"></a>  <span class="fu">require</span>(delay &gt;= Duration.<span class="fu">Zero</span>, <span class="st">&quot;delay must be non-negative&quot;</span>)</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true"></a>  <span class="fu">require</span>(delay &gt;= <span class="dt">Duration</span>.<span class="dt">Zero</span>, <span class="st">&quot;delay must be non-negative&quot;</span>)</span>
 <span id="cb3-11"><a href="#cb3-11" aria-hidden="true"></a>  <span class="kw">if</span> (maxRetries == <span class="dv">1</span>) task</span>
 <span id="cb3-12"><a href="#cb3-12" aria-hidden="true"></a>  <span class="kw">else</span> task.<span class="fu">recoverWith</span> {</span>
-<span id="cb3-13"><a href="#cb3-13" aria-hidden="true"></a>    <span class="kw">case</span> _: Throwable =&gt;</span>
-<span id="cb3-14"><a href="#cb3-14" aria-hidden="true"></a>      <span class="kw">if</span>(delay == Duration.<span class="fu">Zero</span>) <span class="fu">retry</span>(maxRetries - <span class="dv">1</span>)(task)</span>
-<span id="cb3-15"><a href="#cb3-15" aria-hidden="true"></a>      <span class="kw">else</span> SimpleScheduler.<span class="fu">scheduleFuture</span>(delay)(<span class="fu">retry</span>(maxRetries - <span class="dv">1</span>)(task))</span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true"></a>    <span class="kw">case</span> _: <span class="dt">Throwable</span> =&gt;</span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true"></a>      <span class="kw">if</span>(delay == <span class="dt">Duration</span>.<span class="dt">Zero</span>) <span class="fu">retry</span>(maxRetries - <span class="dv">1</span>)(task)</span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true"></a>      <span class="kw">else</span> <span class="dt">SimpleScheduler</span>.<span class="fu">scheduleFuture</span>(delay)(<span class="fu">retry</span>(maxRetries - <span class="dv">1</span>)(task))</span>
 <span id="cb3-16"><a href="#cb3-16" aria-hidden="true"></a>  }</span>
 <span id="cb3-17"><a href="#cb3-17" aria-hidden="true"></a>}</span></code></pre></div>
 <p>So what makes this implementation better? besides a minor API change (taking a <code>FiniteDuration</code> without unnecessary boxing of it in an <code>Option</code>). we have less threads contexts switches, and overall this is more efficient. In the first implementation we used:</p>
-<div class="sourceCode" id="cb4"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true"></a>Future[Unit]{</span>
+<div class="sourceCode" id="cb4"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true"></a><span class="dt">Future</span>[<span class="dt">Unit</span>]{</span>
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true"></a>  <span class="kw">try</span> {</span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true"></a>    Await.<span class="fu">ready</span>(<span class="fu">Promise</span>().<span class="fu">future</span>, ...</span></code></pre></div>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true"></a>    <span class="dt">Await</span>.<span class="fu">ready</span>(<span class="dt">Promise</span>().<span class="fu">future</span>, ...</span></code></pre></div>
 <p>If we’ll count the number of “tasks” to execute at the expense of the given <code>ExecutionContext</code>, we’ll see that we have the first <code>Future.apply</code>, and inside it’s body, we call <code>Await.ready</code>, which uses <code>blocking{...}</code> behind the scenes, which means we allow the <code>ExecutionContext</code> to allocate an extra thread if needed, but all of these only to wait for a future which will never complete, and throw an <code>Exception</code>, and what we really need is only the time-out, so we can try the original given task again. A lot of unneeded work, and threads context-switch with the possibility to cause the allocation of a new thread.</p>
 <p>Now, let’s examine the revised implementation. we already have a thread to handle the execution when it is scheduled. we’re just scheduling a task it should run. the only “extra” work we are doing, is creating a new <code>Runnable</code>, which when run, will complete a promise with the task’s output.</p>
 <p>One thing we must pay attention to, is that we must not perform any work at the expense of the scheduling thread. This thread should be available for other scheduling tasks. Note that I also added a regular scheduling method, in which the given (synchronous) task is wrapped inside a <code>Future{...}</code> block. this is to make sure the task is run at the expense of the given (implicitly) <code>ExecutionContext</code>, and not on the scheduling thread.</p>
