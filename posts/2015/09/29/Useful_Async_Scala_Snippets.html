@@ -2,13 +2,13 @@
 <ul>
 <li><strong>select</strong> - selecting the first future that completes, if there are multiple already completed futures, selects one of those. given a collection of futures, returns a <code>Future[(Try[T],Coll[Future[T]])]</code>, or in words: a Future of tuple of the first completed future’s <code>Try</code> and the collection of the rest of the futures.</li>
 </ul>
-<div class="sourceCode" id="cb1"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true"></a><span class="kw">def</span> select[T,Coll](fc: Coll)</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true"></a>          (<span class="kw">implicit</span> ec: ExecutionContext, </span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true"></a>           ev: Coll &lt;:&lt; TraversableLike[Future[T],Coll]): Future[(Try[T],Coll)] = {</span>
+<div class="sourceCode" id="cb1"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true"></a><span class="kw">def</span> <span class="fu">select</span>[<span class="dt">T</span>,<span class="dt">Coll</span>](fc: <span class="dt">Coll</span>)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true"></a>          (<span class="kw">implicit</span> ec: <span class="dt">ExecutionContext</span>, </span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true"></a>           ev: <span class="dt">Coll</span> &lt;:&lt; <span class="dt">TraversableLike</span>[<span class="dt">Future</span>[<span class="dt">T</span>],<span class="dt">Coll</span>]): <span class="dt">Future</span>[(<span class="dt">Try</span>[<span class="dt">T</span>],<span class="dt">Coll</span>)] = {</span>
 <span id="cb1-4"><a href="#cb1-4" aria-hidden="true"></a>  <span class="kw">if</span> (fc.<span class="fu">isEmpty</span>)</span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true"></a>    Future.<span class="fu">failed</span>(<span class="kw">new</span> IllegalArgumentException(<span class="st">&quot;select from empty collection&quot;</span>))</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true"></a>    <span class="dt">Future</span>.<span class="fu">failed</span>(<span class="kw">new</span> <span class="dt">IllegalArgumentException</span>(<span class="st">&quot;select from empty collection&quot;</span>))</span>
 <span id="cb1-6"><a href="#cb1-6" aria-hidden="true"></a>  <span class="kw">else</span> {</span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true"></a>    <span class="kw">val</span> p = Promise[(Try[T], Future[T])]()</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true"></a>    <span class="kw">val</span> p = <span class="dt">Promise</span>[(<span class="dt">Try</span>[<span class="dt">T</span>], <span class="dt">Future</span>[<span class="dt">T</span>])]()</span>
 <span id="cb1-8"><a href="#cb1-8" aria-hidden="true"></a>    fc.<span class="fu">foreach</span> { f =&gt;</span>
 <span id="cb1-9"><a href="#cb1-9" aria-hidden="true"></a>      f.<span class="fu">onComplete</span> { t =&gt;</span>
 <span id="cb1-10"><a href="#cb1-10" aria-hidden="true"></a>        <span class="kw">if</span> (!p.<span class="fu">isCompleted</span>)</span>
@@ -25,12 +25,12 @@
 <ul>
 <li><strong>successes</strong> - given a sequence of futures, return a future of a sequence containing all the futures that succeeded. one of the most frequently used <code>Future</code>‘s methods in our code base, is <code>Future.sequence</code>. but sometimes, you’ll need a “softer” method, that will collect all the succeeding futures’ elements, and won’t fail if a few futures failed.</li>
 </ul>
-<div class="sourceCode" id="cb2"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true"></a><span class="kw">def</span> successes[A, M[X] &lt;: Traversable[X]](in: M[Future[A]])</span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true"></a>             (<span class="kw">implicit</span> ec: ExecutionContext, </span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true"></a>              cbf: CanBuildFrom[M[Future[A]], A, M[A]]): Future[M[A]] = {</span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true"></a>  in.<span class="fu">foldLeft</span>(Future.<span class="fu">successful</span>(<span class="fu">cbf</span>(in))) {</span>
+<div class="sourceCode" id="cb2"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true"></a><span class="kw">def</span> <span class="fu">successes</span>[<span class="dt">A</span>, <span class="dt">M</span>[<span class="dt">X</span>] &lt;: <span class="dt">Traversable</span>[<span class="dt">X</span>]](in: <span class="dt">M</span>[<span class="dt">Future</span>[<span class="dt">A</span>]])</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true"></a>             (<span class="kw">implicit</span> ec: <span class="dt">ExecutionContext</span>, </span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true"></a>              cbf: <span class="dt">CanBuildFrom</span>[<span class="dt">M</span>[<span class="dt">Future</span>[<span class="dt">A</span>]], <span class="dt">A</span>, <span class="dt">M</span>[<span class="dt">A</span>]]): <span class="dt">Future</span>[<span class="dt">M</span>[<span class="dt">A</span>]] = {</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true"></a>  in.<span class="fu">foldLeft</span>(<span class="dt">Future</span>.<span class="fu">successful</span>(<span class="fu">cbf</span>(in))) {</span>
 <span id="cb2-5"><a href="#cb2-5" aria-hidden="true"></a>    (fr, fa) =&gt; {</span>
-<span id="cb2-6"><a href="#cb2-6" aria-hidden="true"></a>      fa.<span class="fu">flatMap</span>(a =&gt; fr.<span class="fu">map</span>(_ += a)(ec))(ec).<span class="fu">recoverWith</span>{<span class="kw">case</span> _: Throwable =&gt; fr}(ec)</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true"></a>      fa.<span class="fu">flatMap</span>(a =&gt; fr.<span class="fu">map</span>(_ += a)(ec))(ec).<span class="fu">recoverWith</span>{<span class="kw">case</span> _: <span class="dt">Throwable</span> =&gt; fr}(ec)</span>
 <span id="cb2-7"><a href="#cb2-7" aria-hidden="true"></a>    }</span>
 <span id="cb2-8"><a href="#cb2-8" aria-hidden="true"></a>  }.<span class="fu">map</span>(_.<span class="fu">result</span>())</span>
 <span id="cb2-9"><a href="#cb2-9" aria-hidden="true"></a>}</span></code></pre></div>
@@ -38,17 +38,17 @@
 <ul>
 <li><strong>stream</strong> - being async is great, but also being lazy. sometime, you’ll want to convert part of your logic to use a regular collections instead of collections containing futures (you’ll need a really good reason to do so). to do this efficiently, you’ll want to convert a sequence of futures to a <code>Stream</code>, where each element in the stream is given as soon as it’s corresponding future completes. i.e: sort a collection of futures by they’re completion time. so here’s how to do async → lazy conversion:</li>
 </ul>
-<div class="sourceCode" id="cb3"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true"></a><span class="kw">def</span> stream[T,Coll](fc: Coll, timeout: FiniteDuration)</span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true"></a>                  (<span class="kw">implicit</span> ec: ExecutionContext, </span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true"></a>                   ev: Coll &lt;:&lt; TraversableLike[Future[T],Coll]): Stream[Try[T]] = {</span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true"></a>  <span class="kw">if</span> (fc.<span class="fu">isEmpty</span>) Stream.<span class="fu">empty</span>[Try[T]]</span>
+<div class="sourceCode" id="cb3"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true"></a><span class="kw">def</span> <span class="fu">stream</span>[<span class="dt">T</span>,<span class="dt">Coll</span>](fc: <span class="dt">Coll</span>, timeout: <span class="dt">FiniteDuration</span>)</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true"></a>                  (<span class="kw">implicit</span> ec: <span class="dt">ExecutionContext</span>, </span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true"></a>                   ev: <span class="dt">Coll</span> &lt;:&lt; <span class="dt">TraversableLike</span>[<span class="dt">Future</span>[<span class="dt">T</span>],<span class="dt">Coll</span>]): <span class="dt">Stream</span>[<span class="dt">Try</span>[<span class="dt">T</span>]] = {</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true"></a>  <span class="kw">if</span> (fc.<span class="fu">isEmpty</span>) <span class="dt">Stream</span>.<span class="fu">empty</span>[<span class="dt">Try</span>[<span class="dt">T</span>]]</span>
 <span id="cb3-5"><a href="#cb3-5" aria-hidden="true"></a>  <span class="kw">else</span> <span class="kw">try</span> {</span>
-<span id="cb3-6"><a href="#cb3-6" aria-hidden="true"></a>    Await.<span class="fu">result</span>(<span class="fu">select</span>(fc).<span class="fu">map</span> {</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true"></a>    <span class="dt">Await</span>.<span class="fu">result</span>(<span class="fu">select</span>(fc).<span class="fu">map</span> {</span>
 <span id="cb3-7"><a href="#cb3-7" aria-hidden="true"></a>      <span class="kw">case</span> (t, coll) =&gt; t #:: <span class="fu">stream</span>(coll, timeout)</span>
 <span id="cb3-8"><a href="#cb3-8" aria-hidden="true"></a>    }, timeout)</span>
 <span id="cb3-9"><a href="#cb3-9" aria-hidden="true"></a>  }</span>
 <span id="cb3-10"><a href="#cb3-10" aria-hidden="true"></a>  <span class="kw">catch</span> {</span>
-<span id="cb3-11"><a href="#cb3-11" aria-hidden="true"></a>    <span class="kw">case</span> e: TimeoutException =&gt; Stream(Failure[T](e))</span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true"></a>    <span class="kw">case</span> e: <span class="dt">TimeoutException</span> =&gt; <span class="dt">Stream</span>(<span class="dt">Failure</span>[<span class="dt">T</span>](e))</span>
 <span id="cb3-12"><a href="#cb3-12" aria-hidden="true"></a>  }</span>
 <span id="cb3-13"><a href="#cb3-13" aria-hidden="true"></a>}</span></code></pre></div>
 <ul>
@@ -69,11 +69,11 @@
 <span id="cb4-12"><a href="#cb4-12" aria-hidden="true"></a> <span class="co">*</span> but it will always yield a vector<span class="co">,</span> </span>
 <span id="cb4-13"><a href="#cb4-13" aria-hidden="true"></a> <span class="co">*</span> regardless of the provided collection type<span class="co">.</span></span>
 <span id="cb4-14"><a href="#cb4-14" aria-hidden="true"></a> <span class="co">*/</span></span>
-<span id="cb4-15"><a href="#cb4-15" aria-hidden="true"></a><span class="kw">def</span> travector[A, B, M[X] &lt;: TraversableOnce[X]]</span>
-<span id="cb4-16"><a href="#cb4-16" aria-hidden="true"></a>             (in: M[A])</span>
-<span id="cb4-17"><a href="#cb4-17" aria-hidden="true"></a>             (fn: A =&gt; Future[B])</span>
-<span id="cb4-18"><a href="#cb4-18" aria-hidden="true"></a>             (<span class="kw">implicit</span> ec: ExecutionContext): Future[Vector[B]] =</span>
-<span id="cb4-19"><a href="#cb4-19" aria-hidden="true"></a>  in.<span class="fu">foldLeft</span>(Future.<span class="fu">successful</span>(Vector.<span class="fu">newBuilder</span>[B])) { (fr, a) =&gt;</span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true"></a><span class="kw">def</span> <span class="fu">travector</span>[<span class="dt">A</span>, <span class="dt">B</span>, <span class="dt">M</span>[<span class="dt">X</span>] &lt;: <span class="dt">TraversableOnce</span>[<span class="dt">X</span>]]</span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true"></a>             (in: <span class="dt">M</span>[<span class="dt">A</span>])</span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true"></a>             (fn: <span class="dt">A</span> =&gt; <span class="dt">Future</span>[<span class="dt">B</span>])</span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true"></a>             (<span class="kw">implicit</span> ec: <span class="dt">ExecutionContext</span>): <span class="dt">Future</span>[<span class="dt">Vector</span>[<span class="dt">B</span>]] =</span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true"></a>  in.<span class="fu">foldLeft</span>(<span class="dt">Future</span>.<span class="fu">successful</span>(<span class="dt">Vector</span>.<span class="fu">newBuilder</span>[<span class="dt">B</span>])) { (fr, a) =&gt;</span>
 <span id="cb4-20"><a href="#cb4-20" aria-hidden="true"></a>    <span class="kw">val</span> fb = <span class="fu">fn</span>(a)</span>
 <span id="cb4-21"><a href="#cb4-21" aria-hidden="true"></a>    <span class="kw">for</span> (r &lt;- fr; b &lt;- fb) <span class="kw">yield</span> (r += b)</span>
 <span id="cb4-22"><a href="#cb4-22" aria-hidden="true"></a>  }.<span class="fu">map</span>(_.<span class="fu">result</span>())</span></code></pre></div>
