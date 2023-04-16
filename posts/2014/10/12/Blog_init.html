@@ -8,7 +8,7 @@
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true"></a>      <span class="cf">for</span> i <span class="kw">in</span> [<span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">3</span>]:</span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true"></a>        <span class="bu">print</span> <span class="st">&quot;</span><span class="sc">%s</span><span class="st">&quot;</span> <span class="op">%</span> i</span></code></pre></div>
 <h3 id="scala">Scala</h3>
-<div class="sourceCode" id="cb3"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true"></a>    <span class="kw">def</span> <span class="fu">fib</span>(a: Int, b: Int): Stream[Int] = a #:: <span class="fu">fib</span>(b,a+b)</span>
+<div class="sourceCode" id="cb3"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true"></a>    <span class="kw">def</span> <span class="fu">fib</span>(a: <span class="dt">Int</span>, b: <span class="dt">Int</span>): <span class="dt">Stream</span>[<span class="dt">Int</span>] = a #:: <span class="fu">fib</span>(b,a+b)</span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true"></a>    <span class="fu">fib</span>(<span class="dv">1</span>,<span class="dv">1</span>).<span class="fu">filter</span>(_ % <span class="dv">2</span> == <span class="dv">0</span>).<span class="fu">take</span>(<span class="dv">10</span>).<span class="fu">toList</span></span></code></pre></div>
 <h3 id="java-deprecated"><del>Java</del> (deprecated)</h3>
 <div class="sourceCode" id="cb4"><pre class="sourceCode java"><code class="sourceCode java"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true"></a>    <span class="kw">class</span> HelloWorldApp {</span>
