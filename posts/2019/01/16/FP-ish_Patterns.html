@@ -8,12 +8,12 @@
 <p>And I don’t want to see all the crossed out features removed from Scala: <img src="https://raw.githubusercontent.com/hochgi/blog/c5547ad3ff6e2d60a9c73192a83908294499ad31/img/jdg05_liabilities.png" alt="liabilities?" /></p>
 <h2 id="scala-is-expressive">Scala is expressive</h2>
 <p>I was recently asked, why I love Scala. I answered that with Scala, It’s very easy for me to express exactly what I mean for the program to do, and that it’s easy to expose beautiful (and safe) functional interface, while encapsulating impure logic and gaining the benefit of both worlds. I was then asked to give an example, of short code that I find easy to express in Scala, and hard(er) to write in other languages. I choose something I’ve written a while ago, and I find as a nice example for such FP-ish pattern.</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true"></a><span class="kw">def</span> mapr[A,B](as:         Vector[A])</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true"></a>             (f:    A  =&gt; Future[B])</span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true"></a>             (g: (B,B) =&gt; Future[B]): Future[B]</span></code></pre></div>
+<div class="sourceCode" id="cb1"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true"></a><span class="kw">def</span> <span class="fu">mapr</span>[<span class="dt">A</span>,<span class="dt">B</span>](as:         <span class="dt">Vector</span>[<span class="dt">A</span>])</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true"></a>             (f:    <span class="dt">A</span>  =&gt; <span class="dt">Future</span>[<span class="dt">B</span>])</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true"></a>             (g: (<span class="dt">B</span>,<span class="dt">B</span>) =&gt; <span class="dt">Future</span>[<span class="dt">B</span>]): <span class="dt">Future</span>[<span class="dt">B</span>]</span></code></pre></div>
 <p>So… what’s so special about <code>mapr</code>? A quick scala thinker will implement it with something like<a href="#fn3" class="footnote-ref" id="fnref3" role="doc-noteref"><sup>3</sup></a>:</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true"></a>Future.<span class="fu">traverse</span>(as)(f)</span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true"></a>      .<span class="fu">flatMap</span>(_ reduce g) <span class="co">// if g were (B,B) =&gt; B</span></span></code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true"></a><span class="dt">Future</span>.<span class="fu">traverse</span>(as)(f)</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true"></a>      .<span class="fu">flatMap</span>(_ <span class="fu">reduce</span> g) <span class="co">// if g were (B,B) =&gt; B</span></span></code></pre></div>
 <p>And it can be fine, considering the usecase. It wasn’t fine in our case.</p>
 <h3 id="the-real-world-case">The “real world” case</h3>
 <p>Consider <code>A</code> to be file names to fetch from a S3 bucket. But not just any file, it’s a CSV with time series events. <code>B</code> is a time based aggregated states series of the events. <code>f</code> can be “fetch &amp; aggregate” a single file. But since many “sources” (S3 files) can add data, we should think about merging (reducing) multiple sources into one uber states series<a href="#fn4" class="footnote-ref" id="fnref4" role="doc-noteref"><sup>4</sup></a>. Thus we need <code>g</code> to “merge” two time based aggregated states into a single time based state series. Now, file sizes range from a few MBs, up to ~10GB. And this is important, because in the simple solution, we cannot start <code>reduce</code>-ing the small files, until we are done fetching and transforming the bigger 10GB files. Also, if the first <code>A</code> in the <code>Vector</code> is also mapped to the heaviest <code>B</code>, the reduce will be expansive since we always merging ~10GB <code>B</code>.</p>
@@ -27,18 +27,18 @@
 <p>Well, that FP-programmer is actually right. and all that high gibberish talk actually has solid foundations. And in fact, that function <code>g</code> over <code>B</code> I just described does define a semilattice. <code>B</code>s has partial ordering<a href="#fn6" class="footnote-ref" id="fnref6" role="doc-noteref"><sup>6</sup></a>, <code>g</code> acts as the “join” operation, and we even have an identity element (the empty time series), so it is even a <em>“Bounded Semilattice”</em>.</p>
 <p>But this is totally irrelevant and out of the question’s scope. Remember, we are working in an OO organization. If we start defining abstractions over semilattices (or maybe there are ones in cats or scalaz libraries? I really don’t know), The code will become one giant pile of gibberish in the eyes of my coworkers. And we don’t even need it. What is needed, with the realization that <code>g</code> is associative &amp; commutative, is a very natural optimization that pops to mind: why wait for all <code>A =&gt; B</code> transformations? whenever 2 <code>B</code>s are ready, any 2 <code>B</code>s, we can immediately apply <code>g</code> and start the merge process.</p>
 <p>So, without over abstracting, I came up with the following piece of code (brace yourselves):</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true"></a><span class="kw">def</span> unorderedMapReduce[A, B](as: Vector[A])</span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true"></a>                            (f: A =&gt; Future[B], g: (B,B) =&gt; Future[B])</span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true"></a>                            (<span class="kw">implicit</span> executor: ExecutionContext): Future[B] = {</span>
+<div class="sourceCode" id="cb3"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true"></a><span class="kw">def</span> <span class="fu">unorderedMapReduce</span>[<span class="dt">A</span>, <span class="dt">B</span>](as: <span class="dt">Vector</span>[<span class="dt">A</span>])</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true"></a>                            (f: <span class="dt">A</span> =&gt; <span class="dt">Future</span>[<span class="dt">B</span>], g: (<span class="dt">B</span>,<span class="dt">B</span>) =&gt; <span class="dt">Future</span>[<span class="dt">B</span>])</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true"></a>                            (<span class="kw">implicit</span> executor: <span class="dt">ExecutionContext</span>): <span class="dt">Future</span>[<span class="dt">B</span>] = {</span>
 <span id="cb3-4"><a href="#cb3-4" aria-hidden="true"></a></span>
-<span id="cb3-5"><a href="#cb3-5" aria-hidden="true"></a>  <span class="kw">val</span> promises = Array.<span class="fu">fill</span>(<span class="dv">2</span> * in.<span class="fu">size</span> - <span class="dv">1</span>)(Promise.<span class="fu">apply</span>[B])</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true"></a>  <span class="kw">val</span> promises = <span class="dt">Array</span>.<span class="fu">fill</span>(<span class="dv">2</span> * in.<span class="fu">size</span> - <span class="dv">1</span>)(<span class="dt">Promise</span>.<span class="fu">apply</span>[<span class="dt">B</span>])</span>
 <span id="cb3-6"><a href="#cb3-6" aria-hidden="true"></a>  <span class="kw">var</span> i = <span class="dv">0</span> <span class="co">// used for iteration optimization</span></span>
 <span id="cb3-7"><a href="#cb3-7" aria-hidden="true"></a>            <span class="co">// (not needing to search for uncompleted</span></span>
 <span id="cb3-8"><a href="#cb3-8" aria-hidden="true"></a>            <span class="co">// promise from start every time)</span></span>
 <span id="cb3-9"><a href="#cb3-9" aria-hidden="true"></a></span>
-<span id="cb3-10"><a href="#cb3-10" aria-hidden="true"></a>  <span class="kw">def</span> <span class="fu">completeNext</span>(tb: Try[B]): Unit = tb <span class="kw">match</span> {</span>
-<span id="cb3-11"><a href="#cb3-11" aria-hidden="true"></a>    <span class="kw">case</span> <span class="fu">Failure</span>(e) =&gt; promises.<span class="fu">last</span>.<span class="fu">tryFailure</span>(e) <span class="co">// fail fast</span></span>
-<span id="cb3-12"><a href="#cb3-12" aria-hidden="true"></a>    <span class="kw">case</span> <span class="fu">Success</span>(b) =&gt;</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true"></a>  <span class="kw">def</span> <span class="fu">completeNext</span>(tb: <span class="dt">Try</span>[<span class="dt">B</span>]): <span class="dt">Unit</span> = tb <span class="kw">match</span> {</span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true"></a>    <span class="kw">case</span> <span class="dt">Failure</span>(e) =&gt; promises.<span class="fu">last</span>.<span class="fu">tryFailure</span>(e) <span class="co">// fail fast</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true"></a>    <span class="kw">case</span> <span class="dt">Success</span>(b) =&gt;</span>
 <span id="cb3-13"><a href="#cb3-13" aria-hidden="true"></a>      <span class="co">// We&#39;re not synchronizing i, since we can guarantee we&#39;ll always</span></span>
 <span id="cb3-14"><a href="#cb3-14" aria-hidden="true"></a>      <span class="co">// get an i that is less than or equal to latest i written by any</span></span>
 <span id="cb3-15"><a href="#cb3-15" aria-hidden="true"></a>      <span class="co">// other thread. But we cannot use i += 1 inside the loop,</span></span>
@@ -48,10 +48,10 @@
 <span id="cb3-19"><a href="#cb3-19" aria-hidden="true"></a>      <span class="co">// we replace i with a valid value j (less than or equal to</span></span>
 <span id="cb3-20"><a href="#cb3-20" aria-hidden="true"></a>      <span class="co">// first not used promise)</span></span>
 <span id="cb3-21"><a href="#cb3-21" aria-hidden="true"></a>      <span class="kw">var</span> j = i</span>
-<span id="cb3-22"><a href="#cb3-22" aria-hidden="true"></a>      <span class="kw">var</span> p = <span class="fu">promises</span>(j)</span>
-<span id="cb3-23"><a href="#cb3-23" aria-hidden="true"></a>      <span class="kw">while</span> ((p eq <span class="kw">null</span>) || !p.<span class="fu">trySuccess</span>(b)) {</span>
+<span id="cb3-22"><a href="#cb3-22" aria-hidden="true"></a>      <span class="kw">var</span> p = promises(j)</span>
+<span id="cb3-23"><a href="#cb3-23" aria-hidden="true"></a>      <span class="kw">while</span> ((p <span class="fu">eq</span> <span class="kw">null</span>) || !p.<span class="fu">trySuccess</span>(b)) {</span>
 <span id="cb3-24"><a href="#cb3-24" aria-hidden="true"></a>        j += <span class="dv">1</span></span>
-<span id="cb3-25"><a href="#cb3-25" aria-hidden="true"></a>        p = <span class="fu">promises</span>(j)</span>
+<span id="cb3-25"><a href="#cb3-25" aria-hidden="true"></a>        p = promises(j)</span>
 <span id="cb3-26"><a href="#cb3-26" aria-hidden="true"></a>      }</span>
 <span id="cb3-27"><a href="#cb3-27" aria-hidden="true"></a>      i = j</span>
 <span id="cb3-28"><a href="#cb3-28" aria-hidden="true"></a>  }</span>
@@ -71,8 +71,8 @@
 <span id="cb3-42"><a href="#cb3-42" aria-hidden="true"></a></span>
 <span id="cb3-43"><a href="#cb3-43" aria-hidden="true"></a>      <span class="co">// andThen side effect is meant to release potentially heavy</span></span>
 <span id="cb3-44"><a href="#cb3-44" aria-hidden="true"></a>      <span class="co">// elements that otherwise may stay for potentially long time</span></span>
-<span id="cb3-45"><a href="#cb3-45" aria-hidden="true"></a>      <span class="kw">val</span> f1 = p1.<span class="fu">future</span>.<span class="fu">andThen</span> { <span class="kw">case</span> _ =&gt; <span class="fu">promises</span>(i1) = <span class="kw">null</span> }</span>
-<span id="cb3-46"><a href="#cb3-46" aria-hidden="true"></a>      <span class="kw">val</span> f2 = p2.<span class="fu">future</span>.<span class="fu">andThen</span> { <span class="kw">case</span> _ =&gt; <span class="fu">promises</span>(i2) = <span class="kw">null</span> }</span>
+<span id="cb3-45"><a href="#cb3-45" aria-hidden="true"></a>      <span class="kw">val</span> f1 = p1.<span class="fu">future</span>.<span class="fu">andThen</span> { <span class="kw">case</span> _ =&gt; promises(i1) = <span class="kw">null</span> }</span>
+<span id="cb3-46"><a href="#cb3-46" aria-hidden="true"></a>      <span class="kw">val</span> f2 = p2.<span class="fu">future</span>.<span class="fu">andThen</span> { <span class="kw">case</span> _ =&gt; promises(i2) = <span class="kw">null</span> }</span>
 <span id="cb3-47"><a href="#cb3-47" aria-hidden="true"></a>      <span class="fu">failFastZip</span>(f1,f2)</span>
 <span id="cb3-48"><a href="#cb3-48" aria-hidden="true"></a>        .<span class="fu">flatMap</span>(g.<span class="fu">tupled</span>)</span>
 <span id="cb3-49"><a href="#cb3-49" aria-hidden="true"></a>        .<span class="fu">onComplete</span>(completeNext)</span>
@@ -82,9 +82,9 @@
 <span id="cb3-53"><a href="#cb3-53" aria-hidden="true"></a></span>
 <span id="cb3-54"><a href="#cb3-54" aria-hidden="true"></a><span class="co">// regular Future.zip flatMaps first future, so it won&#39;t</span></span>
 <span id="cb3-55"><a href="#cb3-55" aria-hidden="true"></a><span class="co">// fail fast when 2nd RHS future completes first as failure.</span></span>
-<span id="cb3-56"><a href="#cb3-56" aria-hidden="true"></a><span class="kw">def</span> failFastZip[A,B](l: Future[A], r: Future[B])</span>
-<span id="cb3-57"><a href="#cb3-57" aria-hidden="true"></a>                    (<span class="kw">implicit</span> executor: ExecutionContext): Future[(A,B)] = {</span>
-<span id="cb3-58"><a href="#cb3-58" aria-hidden="true"></a>  <span class="kw">val</span> p = Promise[(A,B)]()</span>
+<span id="cb3-56"><a href="#cb3-56" aria-hidden="true"></a><span class="kw">def</span> <span class="fu">failFastZip</span>[<span class="dt">A</span>,<span class="dt">B</span>](l: <span class="dt">Future</span>[<span class="dt">A</span>], r: <span class="dt">Future</span>[<span class="dt">B</span>])</span>
+<span id="cb3-57"><a href="#cb3-57" aria-hidden="true"></a>                    (<span class="kw">implicit</span> executor: <span class="dt">ExecutionContext</span>): <span class="dt">Future</span>[(<span class="dt">A</span>,<span class="dt">B</span>)] = {</span>
+<span id="cb3-58"><a href="#cb3-58" aria-hidden="true"></a>  <span class="kw">val</span> p = <span class="dt">Promise</span>[(<span class="dt">A</span>,<span class="dt">B</span>)]()</span>
 <span id="cb3-59"><a href="#cb3-59" aria-hidden="true"></a>  l.<span class="fu">onComplete</span>(_.<span class="fu">failed</span>.<span class="fu">foreach</span>(p.<span class="fu">tryFailure</span>))</span>
 <span id="cb3-60"><a href="#cb3-60" aria-hidden="true"></a>  r.<span class="fu">onComplete</span>(_.<span class="fu">failed</span>.<span class="fu">foreach</span>(p.<span class="fu">tryFailure</span>))</span>
 <span id="cb3-61"><a href="#cb3-61" aria-hidden="true"></a>  <span class="kw">for</span> {</span>

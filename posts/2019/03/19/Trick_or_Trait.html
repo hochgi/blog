@@ -10,39 +10,39 @@
 <h2 id="when-should-you-use-extends-on-a-trait">When should you use <code>extends</code> on a trait?</h2>
 <p>Scala’s traits are “stackable”, and can be used for “stackable modifications”. This feature is well blogged on, and not the main purpose of this current post, so go ahead and take a look at the basic example from <a href="https://booksites.artima.com/programming_in_scala_3ed/examples/html/ch12.html#sec5">Programming in Scala book</a>.</p>
 <p>The reason it works so well, is because each trait stacked extend <code>IntQueue</code>, and thus enforcing it’s own place in <a href="https://www.scala-lang.org/files/archive/spec/2.12/05-classes-and-objects.html#class-linearization"><em>class linearization</em></a> to the left of the implementing class, so <code>super</code> calls are always called in proper order. If we would not have extended, but merely enforce a mixin with self type, we wouldn’t be able to call <code>super</code>, thus not be able to stack operations.</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true"></a><span class="kw">import</span> scala.<span class="fu">collection</span>.<span class="fu">mutable</span>.<span class="fu">ArrayBuffer</span></span>
+<div class="sourceCode" id="cb1"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true"></a><span class="kw">import</span> scala.<span class="fu">collection</span>.<span class="fu">mutable</span>.<span class="dt">ArrayBuffer</span></span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true"></a></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true"></a><span class="kw">abstract</span> <span class="kw">class</span> IntQueue {</span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true"></a>  <span class="kw">def</span> <span class="fu">get</span>(): Int</span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true"></a>  <span class="kw">def</span> <span class="fu">put</span>(x: Int)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true"></a><span class="kw">abstract</span> <span class="kw">class</span> <span class="dt">IntQueue</span> {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true"></a>  <span class="kw">def</span> <span class="fu">get</span>(): <span class="dt">Int</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true"></a>  <span class="kw">def</span> <span class="fu">put</span>(x: <span class="dt">Int</span>)</span>
 <span id="cb1-6"><a href="#cb1-6" aria-hidden="true"></a>}</span>
 <span id="cb1-7"><a href="#cb1-7" aria-hidden="true"></a></span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true"></a><span class="kw">trait</span> Doubling <span class="kw">extends</span> IntQueue {</span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true"></a>  <span class="kw">abstract</span> <span class="kw">override</span> <span class="kw">def</span> <span class="fu">put</span>(x: Int) = { <span class="kw">super</span>.<span class="fu">put</span>(<span class="dv">2</span> * x) }</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true"></a><span class="kw">trait</span> <span class="dt">Doubling</span> <span class="kw">extends</span> <span class="dt">IntQueue</span> {</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true"></a>  <span class="kw">abstract</span> <span class="kw">override</span> <span class="kw">def</span> <span class="fu">put</span>(x: <span class="dt">Int</span>) = { <span class="kw">super</span>.<span class="fu">put</span>(<span class="dv">2</span> * x) }</span>
 <span id="cb1-10"><a href="#cb1-10" aria-hidden="true"></a>}</span>
 <span id="cb1-11"><a href="#cb1-11" aria-hidden="true"></a></span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true"></a><span class="kw">trait</span> Incrementing <span class="kw">extends</span> IntQueue {</span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true"></a>  <span class="kw">abstract</span> <span class="kw">override</span> <span class="kw">def</span> <span class="fu">put</span>(x: Int) = { <span class="kw">super</span>.<span class="fu">put</span>(x + <span class="dv">1</span>) }</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true"></a><span class="kw">trait</span> <span class="dt">Incrementing</span> <span class="kw">extends</span> <span class="dt">IntQueue</span> {</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true"></a>  <span class="kw">abstract</span> <span class="kw">override</span> <span class="kw">def</span> <span class="fu">put</span>(x: <span class="dt">Int</span>) = { <span class="kw">super</span>.<span class="fu">put</span>(x + <span class="dv">1</span>) }</span>
 <span id="cb1-14"><a href="#cb1-14" aria-hidden="true"></a>}</span>
 <span id="cb1-15"><a href="#cb1-15" aria-hidden="true"></a></span>
 <span id="cb1-16"><a href="#cb1-16" aria-hidden="true"></a><span class="co">// replacing definition with commented out</span></span>
 <span id="cb1-17"><a href="#cb1-17" aria-hidden="true"></a><span class="co">// self typing code won&#39;t compile:</span></span>
 <span id="cb1-18"><a href="#cb1-18" aria-hidden="true"></a><span class="co">//</span></span>
 <span id="cb1-19"><a href="#cb1-19" aria-hidden="true"></a><span class="co">// trait Filtering { this: IntQueue =&gt;</span></span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true"></a><span class="kw">trait</span> Filtering <span class="kw">extends</span> IntQueue {</span>
-<span id="cb1-21"><a href="#cb1-21" aria-hidden="true"></a>  <span class="kw">abstract</span> <span class="kw">override</span> <span class="kw">def</span> <span class="fu">put</span>(x: Int) = {</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true"></a><span class="kw">trait</span> <span class="dt">Filtering</span> <span class="kw">extends</span> <span class="dt">IntQueue</span> {</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true"></a>  <span class="kw">abstract</span> <span class="kw">override</span> <span class="kw">def</span> <span class="fu">put</span>(x: <span class="dt">Int</span>) = {</span>
 <span id="cb1-22"><a href="#cb1-22" aria-hidden="true"></a>    <span class="kw">if</span> (x &gt;= <span class="dv">0</span>) <span class="kw">super</span>.<span class="fu">put</span>(x)</span>
 <span id="cb1-23"><a href="#cb1-23" aria-hidden="true"></a>  }</span>
 <span id="cb1-24"><a href="#cb1-24" aria-hidden="true"></a>}</span>
 <span id="cb1-25"><a href="#cb1-25" aria-hidden="true"></a></span>
-<span id="cb1-26"><a href="#cb1-26" aria-hidden="true"></a><span class="kw">class</span> BasicIntQueue <span class="kw">extends</span> IntQueue {</span>
-<span id="cb1-27"><a href="#cb1-27" aria-hidden="true"></a>  <span class="kw">private</span> <span class="kw">val</span> buf = <span class="kw">new</span> ArrayBuffer[Int]</span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true"></a><span class="kw">class</span> <span class="dt">BasicIntQueue</span> <span class="kw">extends</span> <span class="dt">IntQueue</span> {</span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true"></a>  <span class="kw">private</span> <span class="kw">val</span> buf = <span class="kw">new</span> <span class="dt">ArrayBuffer</span>[<span class="dt">Int</span>]</span>
 <span id="cb1-28"><a href="#cb1-28" aria-hidden="true"></a>  <span class="kw">def</span> <span class="fu">get</span>() = buf.<span class="fu">remove</span>(<span class="dv">0</span>)</span>
-<span id="cb1-29"><a href="#cb1-29" aria-hidden="true"></a>  <span class="kw">def</span> <span class="fu">put</span>(x: Int) = { buf += x }</span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true"></a>  <span class="kw">def</span> <span class="fu">put</span>(x: <span class="dt">Int</span>) = { buf += x }</span>
 <span id="cb1-30"><a href="#cb1-30" aria-hidden="true"></a>}</span></code></pre></div>
 <p>Usage:</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true"></a>scala&gt; <span class="kw">val</span> q = <span class="kw">new</span> BasicIntQueue <span class="kw">with</span> Doubling <span class="kw">with</span> Filtering <span class="kw">with</span> Incrementing</span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true"></a>q: BasicIntQueue <span class="kw">with</span> Doubling <span class="kw">with</span> Filtering <span class="kw">with</span> Incrementing = $anon$<span class="dv">1</span>@<span class="fl">5e3</span>dd1f3</span>
+<div class="sourceCode" id="cb2"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true"></a>scala&gt; <span class="kw">val</span> q = <span class="kw">new</span> <span class="dt">BasicIntQueue</span> <span class="kw">with</span> <span class="dt">Doubling</span> <span class="kw">with</span> <span class="dt">Filtering</span> <span class="kw">with</span> <span class="dt">Incrementing</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true"></a>q: <span class="dt">BasicIntQueue</span> <span class="kw">with</span> <span class="dt">Doubling</span> <span class="kw">with</span> <span class="dt">Filtering</span> <span class="kw">with</span> <span class="dt">Incrementing</span> = $anon$<span class="dv">1</span>@<span class="fl">5e3</span>dd1f3</span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true"></a></span>
 <span id="cb2-4"><a href="#cb2-4" aria-hidden="true"></a>scala&gt; q.<span class="fu">put</span>(-<span class="dv">3</span>);q.<span class="fu">put</span>(<span class="dv">0</span>);q.<span class="fu">put</span>(-<span class="dv">1</span>);q.<span class="fu">put</span>(<span class="dv">1</span>)</span>
 <span id="cb2-5"><a href="#cb2-5" aria-hidden="true"></a></span>
@@ -56,13 +56,13 @@
 <span id="cb2-13"><a href="#cb2-13" aria-hidden="true"></a>res3: Int = <span class="dv">4</span></span>
 <span id="cb2-14"><a href="#cb2-14" aria-hidden="true"></a></span>
 <span id="cb2-15"><a href="#cb2-15" aria-hidden="true"></a>scala&gt; q.<span class="fu">get</span>()</span>
-<span id="cb2-16"><a href="#cb2-16" aria-hidden="true"></a>java.<span class="fu">lang</span>.<span class="fu">IndexOutOfBoundsException</span>: <span class="dv">0</span></span>
-<span id="cb2-17"><a href="#cb2-17" aria-hidden="true"></a>  at scala.<span class="fu">collection</span>.<span class="fu">mutable</span>.<span class="fu">ResizableArray</span>.<span class="fu">apply</span>(ResizableArray.<span class="fu">scala</span>:<span class="dv">46</span>)</span>
-<span id="cb2-18"><a href="#cb2-18" aria-hidden="true"></a>  at scala.<span class="fu">collection</span>.<span class="fu">mutable</span>.<span class="fu">ResizableArray</span>.<span class="fu">apply</span>$(ResizableArray.<span class="fu">scala</span>:<span class="dv">45</span>)</span>
-<span id="cb2-19"><a href="#cb2-19" aria-hidden="true"></a>  at scala.<span class="fu">collection</span>.<span class="fu">mutable</span>.<span class="fu">ArrayBuffer</span>.<span class="fu">apply</span>(ArrayBuffer.<span class="fu">scala</span>:<span class="dv">49</span>)</span>
-<span id="cb2-20"><a href="#cb2-20" aria-hidden="true"></a>  at scala.<span class="fu">collection</span>.<span class="fu">mutable</span>.<span class="fu">ArrayBuffer</span>.<span class="fu">remove</span>(ArrayBuffer.<span class="fu">scala</span>:<span class="dv">173</span>)</span>
-<span id="cb2-21"><a href="#cb2-21" aria-hidden="true"></a>  at BasicIntQueue.<span class="fu">get</span>(IntQueue.<span class="fu">scala</span>:<span class="dv">30</span>)</span>
-<span id="cb2-22"><a href="#cb2-22" aria-hidden="true"></a>  ... <span class="dv">36</span> elided</span></code></pre></div>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true"></a><span class="al">java.lang.IndexOutOfBoundsException: 0</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true"></a><span class="al">  at scala.collection.mutable.ResizableArray.apply(ResizableArray.scala:46)</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true"></a><span class="al">  at scala.collection.mutable.ResizableArray.apply$(ResizableArray.scala:45)</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true"></a><span class="al">  at scala.collection.mutable.ArrayBuffer.apply(ArrayBuffer.scala:49)</span></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true"></a><span class="al">  at scala.collection.mutable.ArrayBuffer.remove(ArrayBuffer.scala:173)</span></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true"></a><span class="al">  at BasicIntQueue.get(IntQueue.scala:30)</span></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true"></a><span class="al">  ... 36 elided</span></span></code></pre></div>
 <h2 id="class-linearization">class linearization?</h2>
 <p>The <a href="">specs</a> define linearization according to the following formula:</p>
 <p>
@@ -80,7 +80,7 @@ $$
 $$
 </p>
 <p>This means a class \(\mathcal{C}\), or in our case <code>q</code>, is linearized as:</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true"></a><span class="kw">val</span> q = <span class="kw">new</span> BasicIntQueue <span class="kw">with</span> Doubling <span class="kw">with</span> Filtering <span class="kw">with</span> Incrementing</span></code></pre></div>
+<div class="sourceCode" id="cb3"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true"></a><span class="kw">val</span> q = <span class="kw">new</span> <span class="dt">BasicIntQueue</span> <span class="kw">with</span> <span class="dt">Doubling</span> <span class="kw">with</span> <span class="dt">Filtering</span> <span class="kw">with</span> <span class="dt">Incrementing</span></span></code></pre></div>
 <p style="font-family: monospace; white-space: pre;"><code>q</code>             = \(\mathcal{C}\)<br>
 <code>BasicIntQueue</code> = \(\mathcal{L}\big(\mathcal{C}_1\big)=\{BasicIntQueue,IntQueue,AnyRef,Any\}\)<br>
 <code>Doubling</code>      = \(\mathcal{L}\big(\mathcal{C}_2\big)=\{Doubling,IntQueue,AnyRef,Any\}\)<br>
@@ -105,10 +105,10 @@ $$
 <p>As you probably know, traits are not interfaces. A trait can hold non abstract members, whether <code>def</code>s, <code>val</code>s, etc’… normally, you shouldn’t care about the linearization of your class. But if your traits interact with each other, and contain (possibly uninitialized) <code>val</code>s, you might (depends on how you defined your class hierarchy and inter-trait interaction) encounter some puzzling <code>NullPointerException</code>s. In these cases, since scalac prohibits any form of circular inheritance, a user can re-arrange mixins order of the bottom type, and carry on. Given of-course the user has full control of the class linearization. When you enforce a mixin using self typing, your trait, and the trait you enforce mixin with, can appear in any order once linearized. The user is in full control. And you can (though not necessarily should) use anything from the enforced mixin, as if it was “extended regularly”. As long as you also type alias <code>this</code>.</p>
 <h2 id="this-aliasing"><code>this</code> aliasing?</h2>
 <p><code>this</code> aliasing isn’t something new or unknown. There are many good reasons to do so<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a>, but for now, just know there are several ways to do it, with very subtle differences between them.</p>
-<div class="sourceCode" id="cb4"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true"></a><span class="kw">trait</span> A { self =&gt; ... }</span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true"></a><span class="kw">trait</span> A { self: B =&gt; ... }</span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true"></a><span class="kw">trait</span> A { <span class="kw">this</span>: B =&gt; ... }</span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true"></a><span class="kw">trait</span> A { _: B =&gt; ... }</span></code></pre></div>
+<div class="sourceCode" id="cb4"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true"></a><span class="kw">trait</span> <span class="dt">A</span> { self =&gt; ... }</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true"></a><span class="kw">trait</span> <span class="dt">A</span> { self: <span class="dt">B</span> =&gt; ... }</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true"></a><span class="kw">trait</span> <span class="dt">A</span> { <span class="kw">this</span>: <span class="dt">B</span> =&gt; ... }</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true"></a><span class="kw">trait</span> <span class="dt">A</span> { _: <span class="dt">B</span> =&gt; ... }</span></code></pre></div>
 <p>In the first option, you give an alias to <code>this</code>, usually, so you would be able to refer to it from an inner class (which is quite handy if you utilize path dependent types). The second is interesting, it will force implementing classes to also mix in <code>B</code> trait. Options 3 &amp; 4 are equivalent as much as I know (please correct me if I’m wrong).</p>
 <h2 id="conclusion">conclusion</h2>
 <p>Adhering to the <a href="http://www.lihaoyi.com/post/StrategicScalaStylePrincipleofLeastPower.html">principle of least power</a>, you should choose the most restrictive approach you can get by with. If all you need is to know your trait is always mixed with another trait<a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a>, use only a type (option 4). Also if you need to use another trait capabilities, but only from within a method, or in any way not during initialization, use self typing (options 2, 3, 4). If you also have inner classes and refers to <code>this</code> in the code, alias it as something else (convention is “self”) to ease readability. If you depend on another trait during initialization, then extend it to ensure correct ordering in class linearization. But do it only if you really must.</p>
