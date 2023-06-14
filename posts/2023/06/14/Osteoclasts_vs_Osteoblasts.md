@@ -1,0 +1,31 @@
+I used to feel as this carmudgeon developer, somewhat angry at all these keyboard monkeys who can't or won't write decent code. And then I found myself working with such "keyboard monkeys[^footnote1]", perhaps even being one myself. At least à la the current carmudgeon developer[^footnote2].
+
+Being on different side of the fence made me realise that sometimes we must stir things up to make progress.
+Even at the cost of "breaking stuff".
+
+Nowadays, instead of an old and wise carmudgeon vs reckless keyboard monkeys, I tend to think of the situation as more of a "osteoblasts vs. osteoclasts", and actually think this is a healthy situation for a software organization to be in[^footnote3].
+
+## what are "osteoblasts" and "osteoclasts" anyway?
+![osteoclasts vs. osteoblasts search results summary.](https://raw.githubusercontent.com/hochgi/blog/1142d3eea9413615c6aa42c4255f36111a9bb1a7/img/osteoblasts.vs.osteoclasts.jpeg)
+
+tl;dr: osteoblasts build bone tissue while osteoclasts destroy it.
+
+### Where am I going with this analogy?
+When software gets enough mileage and accumulate enough "tech debt[^footnote4]", it tends to become more "rigid".
+It gets hard to make changes, introduce new features, etc'…
+
+Similarly, our bones gets more rigid as we grow old. A child's bones are more flexible and tend to bend or “bow” instead of breaking. An adult's bones are harder and more brittle.
+The way our bones grow, is largely thanks to the work of osteoblasts and osteoclasts in our body. To help bones grow as they become more and more rigid, the osteoclasts dissolve and damage the bones, allowing the osteoblasts to mend the bones with new and better bone tissue.
+
+Back to software developement: The "reckless" works of the young and darring might anger the old and wise who feel they need to "clean up" after the monkeys. But if we don't have our reckless osteoclasts to break the software in the right places, we won't be able to make important adjustments to our software. We need the old and wise menders to make sure everything is working properly. We also need some recklessness and darring to "get shit done".
+
+It is a delicate balance, and each organization has a different "right" ratio of preservation vs. innovation oriented developers.
+
+
+[^footnote1]: Not really. They are all awesome people and great developers. You'll see where I'm heading with this soon enough.
+
+[^footnote2]: Brilliant fellow TBH. Had been around from the product's early days, and had very deep and vast knowledge of the system.
+
+[^footnote3]: Assuming you have the "right" balance of old and wise carmudgeons to reckless keyboard monkeys ratio.
+
+[^footnote4]: I actually don't like that term. I prefer "software rot" over "tech debt" - but that's an issue for another post.
