@@ -1,0 +1,335 @@
+<p><em>“Build projects around motivated individuals. Give them the
+environment and support they need, and trust them to get the job
+done.”</em><a href="#fn1" class="footnote-ref" id="fnref1"
+role="doc-noteref"><sup>1</sup></a></p>
+<p>When I initially started writing this post long ago, I originally
+named it “No Estimates!”<a href="#fn2" class="footnote-ref" id="fnref2"
+role="doc-noteref"><sup>2</sup></a>. And while I still agree with most
+of what I wrote back then, I feel that the title less reflects my
+current stance on the subject. We live in a less-than-ideal world. Being
+pragmatic and working within the current framework is more important
+than being a purist and complain about what’s wrong.<br />
+But before we delve into pragmatism, we need to understand what is the
+problem with estimates in the first place. So here are my thoughts on
+giving time estimations in the software engineering industry.</p>
+<h2 id="you-cant-have-it-both-ways">You can’t have it both ways</h2>
+<p>As developers, we often need to choose between different trade-offs.
+Whether it’s choosing your distributed data storage model, acknowledging
+<a href="https://en.wikipedia.org/wiki/CAP_theorem">CAP theorem</a>
+constraints, and choosing either <strong>consistency</strong> or
+<strong>availability</strong> in a distributed system, choosing a
+technology that maximizes either <strong>throughput</strong> or
+<strong>latency</strong>, choosing a randomness model (<a
+href="https://en.wikipedia.org/wiki/Las_Vegas_algorithm"><strong>Las-Vegas</strong></a>
+vs. <a
+href="https://en.wikipedia.org/wiki/Monte_Carlo_algorithm"><strong>Monte-Carlo</strong></a>),
+or building a predictive model that favors <strong>precision</strong>
+over <strong>recall</strong>, etc…<br />
+But when it comes to development culture, we often fail to recognize
+different trade-offs in our day to day work. Ignoring a technical
+trade-off may result in malfunctioning software. When it comes to an
+organizational culture trade-off that is being ignored, it can cause
+much more harm.</p>
+<h2 id="a-trade-off">A trade-off</h2>
+<p>Organizational life is full of trade-offs. Let me focus just on one:
+<em>Release cycles should either commit to deliver <strong>on
+time</strong>, or <strong>on content</strong>, but never both.</em> This
+seems intuitive and simple, obviously everyone agree, no?<br />
+No! Have you ever been asked to provide an “effort estimate”, or “time
+estimate” on a task? If so, whoever asked you for the estimate did not
+make a conscious choice regarding the on-time vs. on-content trade-off.
+They implicitly delegated a different decision down to you, whether they
+(or you) were even aware to it. But more on that later.</p>
+<p><strong>On time</strong> means that you don’t promise on content
+delivery, but commit on a release date. And you release, even if the
+change is minimal, or even if not apparent to clients at all (only
+internal changes &amp; bug fixes)<a href="#fn3" class="footnote-ref"
+id="fnref3" role="doc-noteref"><sup>3</sup></a>.</p>
+<p><strong>On content</strong> means you plan for specific functionality
+to be delivered, but you can’t promise when to deliver it. No doubt you
+will encounter many sub-tasks you did not thought of initially, and
+which you should (must) do prior to the content promised for delivery<a
+href="#fn4" class="footnote-ref" id="fnref4"
+role="doc-noteref"><sup>4</sup></a>.</p>
+<p>Either case, there no need to get an estimate on a specific task.</p>
+<h2 id="why-not-actually">Why not actually?</h2>
+<p><em>“This seems to work for our org…”</em><br />
+Let’s disregard the fact that forcing an estimate from the developer
+gives you an educated guess at best<a href="#fn5" class="footnote-ref"
+id="fnref5" role="doc-noteref"><sup>5</sup></a>, and a mere fortune
+telling<a href="#fn6" class="footnote-ref" id="fnref6"
+role="doc-noteref"><sup>6</sup></a> at worst, and focus on how it
+affects the dev team, and how it perceived by management/product.</p>
+<p>When we give an estimate, we implicitly “commit” to both
+<strong>time</strong> <em>AND</em> <strong>content</strong>, whether we
+know it, or not. But something has to give. We can’t have it all. Let’s
+rephrase the trade-off:</p>
+<p>We can deliver <strong>on time</strong>, <strong>on content</strong>,
+or <strong>on quality</strong>: choose 2.</p>
+<h3 id="what-does-quality-has-to-do-with-this">What does quality has to
+do with this?</h3>
+<p>Most organizations have a backlog of tasks, probably prioritized. One
+should try not to care how long a single task will take. The reasoning
+behind it is something most developers have a gut feeling about, but
+might not be fully aware to. When working on a task, you often find out
+peripheral area’s that require changes. A good developer should know
+when such peripheral changes are becoming <a
+href="https://en.wiktionary.org/wiki/yak_shaving">“Yak Shaving”</a>, and
+when it’s likely gonna pay off to just do it.<br />
+Developers can then feed a healthy backlog with “TODOs” they encounter
+on the fly and don’t want to “inline” within their current subtask. Such
+work flow is flexible, and leaves room for gradual fine-tuning by
+developers. Not only that, but it has the merits of allowing the
+developers take smaller tasks, sometimes purely technical, and offload
+to their future self, knowing it will get done. Smaller tasks means
+easier reviews, higher confidence on every increment, and faster
+delivery cycles in general.<br />
+The fact that we get things done faster, and all “TODOs” - aka
+maintainance work gets done, means higher quality software.</p>
+<p>But, whoever in your organization is in charge on prioritizing the
+backlog of tasks, may have different views and preferences than the
+actual team doing all the coding. That’s alright.</p>
+<p>Even if they prioritize solely based on external needs, e.g: bugs
+reported by clients, feature requests, etc…<br />
+The dev team can, should, and (hopefully) will adjust.<br />
+They will take on more maintenance tasks inlined within other tasks.
+This is not ideal, but it is a workable environment. So long as we make
+sure to “let them” inline such maintainance work.</p>
+<p>When there’s a high level of trust towards the dev team,
+prioritization of tasks is made in a way that maintenance work get a
+fair share in every cycle. We trust the developers to not spam JIRA (et
+al) with redundant work. Or in the second scenario, we trust them to not
+waste time, to “raise flags” when unforseen issues pop up, and we let
+them do their thing without pressuring imaginary time constraints.</p>
+<p>On the other hand, when you ask for an estimate on a task, you’re
+effectively asking for a deadline. Or in other words, a <em>time AND
+content</em> constraint.<br />
+Even if you declare that it’s not a binding commitment, and just a rough
+estimate to reflect for the management or product owners, the developer
+giving that estimate will implicitly accept this as a deadline (and
+don’t even get me started on hard deadlines!).</p>
+<p>Now, that we’ve understood the fundamental trade-off, let’s take a
+deeper look into why estimates often fail in practice.</p>
+<h3 id="whats-in-an-estimate">What’s in an estimate?</h3>
+<p>Allow me to offer a glimpse into the mind of a developer being asked
+for an estimate:</p>
+<ol type="1">
+<li>We need to account for “unknown unknowns” (aka “TODOs” / inilined
+maintainance).</li>
+<li>And we don’t want to be “way off”, or else… (will we be held
+accountible?)</li>
+<li>But also, we don’t want to be that person who always gives an overly
+exagerated estimate.</li>
+<li>We’re “pleasers” so we’ll probably just say what you want to
+hear.</li>
+<li>We’ll then try our best to make it.</li>
+</ol>
+<p>This means we don’t offload “TODOs” nor inline maintenance work
+enough (if at all).<br />
+Even if we try to prioritize maintenance work post-delivery (be honest.
+will you? really?), the maintainance itself is more expensive.  Solving
+an issue you just discoverred, and have full context on, is much easier
+than coming back to it after a while, not to mention maybe other stuff
+that didn’t exist before already depend on your faulty code. So no, a
+“promise” from management to pay off “tech debt” in the next
+cycle/quarter/whatever… isn’t good enough.</p>
+<p>So, yeah. maybe an estimate is not a “deadline”, but it has a very
+similar effect. It still causes software rot due to neglecting
+maintainance work, which in turn causes stress, fatigue, weariness, and
+de-motivating the dev team.</p>
+<p>By not caring at all how long a task will take, you actually say you
+have confidence in your dev team to take as much time as needed to close
+the task. You trust them not to take too long (or “slack off”), and
+trust them to raise flags if some tasks prolong beyond the scope of a
+“regular task” they’re used to. This trust is empowering, motivating,
+and creates a healthier dev environment.</p>
+<h3 id="were-not-using-estimates-we-do-story-points.">“We’re not using
+estimates, we do story points.”</h3>
+<p>oh really..?<br />
+Story points <strong>are</strong> estimates. And a bad one. Ask the guy
+who invented them<a href="#fn7" class="footnote-ref" id="fnref7"
+role="doc-noteref"><sup>7</sup></a>.</p>
+<h2 id="becoming-a-healthy-organization">Becoming a healthy
+organization</h2>
+<p>It’s important to note that no one is asking time estimates in ill
+intent<a href="#fn8" class="footnote-ref" id="fnref8"
+role="doc-noteref"><sup>8</sup></a>. It’s obvious that time estimates
+make the job of the dev manager, product owner, or project manager much
+easier. Clients are happy (in short term), since they have (an illusion
+of?) transparency on progress, which are good reasons overall. And yes,
+working without estimates is going to be harder. Sort of like how
+writing multi threaded async code is harder than single threaded
+blocking code, or how working with a distributed NoSQL database is
+harder than a single node relational database. But eventually, much like
+in these examples, it is often becomes necessary in the long run.</p>
+<h2 id="being-pragmatic">Being pragmatic</h2>
+<p>Your organization currently relies on estimates for planning. “We
+can’t ditch this. That’s impractical”, they may say.<br />
+OK then, what is the essence of the need to provide estimates?</p>
+<p>Transparency of progress for management? Ability to plan ahead?
+Ensuring development stays “on track” and doesn’t stray off in
+irrelevant directions?</p>
+<p>I think all of these can be achieved by estimating without asking
+<em>developers</em> for estimates.</p>
+<p>Wait, what…?</p>
+<p>If you read carefully the previous sections, you’ll see I say nothing
+is inherently bad with estimations on their own. I advocate for not
+forcing them out from developers. I’ll also add, risking stating the
+obvious, that we should take estimations for what they are: Estimations!
+Not predictions. Not a commitment.</p>
+<p>Lets unpack this:</p>
+<ul>
+<li><strong>accountability</strong> - a developer giving an estimation
+feels accountable for it, and would be tempted to take shortcuts
+implicitly. Better to have these shortcuts made into an explicit choice.
+Either way (taking the shortcut, or spending the extra time to do
+something the “right way”), we lift the pressure from developers feeling
+accountable for either not making “on time”, or on-time delivery of a
+buggy second grade lousy solution.</li>
+<li><strong>transparancy</strong> - despite the reputation
+management/PMs usually have in the eyes of development teams, I don’t
+think anyone wants to compromise on quality. But this is usually a
+“black box”. Management usually only knows a feature can be delivered in
+a week “the hacky way”, or a month “the right way”. Given this opaque
+repeated choice, I’d bet everyone would be tempted to choose the fast
+way once in a while.</li>
+<li><strong>planning</strong> - more often then not, estimates are asked
+for making a decision. Having several business goals, they may not all
+fit in our capacity to deliver. We need to pick a subset of “big rocks”
+to focus on in the next cycle.</li>
+</ul>
+<h3 id="my-suggestion">My suggestion?</h3>
+<p>Management/PMs should try to estimate how long a task might take
+without asking the developers. Not even “t-shirt size”. Not even get
+“approval” - no <em>“Do you think its doable within…?”</em> kind of
+questions!<br />
+Estimations should be kept by management/PMs to themselves, and not even
+share with most developers. We need to remove any sense of
+“accountability” on the dev team. real, or perceived.</p>
+<h3 id="but-how">But how?</h3>
+<p>Management/PMs can “interrogate” developers for the
+<strong>“what”</strong> (and sometimes <em>“how”</em>) instead of asking
+for <strong>“when”</strong> or <strong>“how long”</strong>. I wrote
+above, that experienced developers have a “gut feeling” about what needs
+to be done.<br />
+But what if not? How can we tell whether our developers has the “right”
+kind of gut feelings?<br />
+A task, any task, is pottentially an infinite tree of subtasks. Some are
+essential, others I called out as “yak shaving” before. An experienced
+developer will know when to stop “unfolding” this infinite fractal tasks
+tree.<br />
+But, by having a PM “interrogate” the developer, they’re basically
+unfolding the tree together. Each developer has its own pace, and
+different prefferences for the ideal “resolution” of breaking into
+subtasks. This is very individual, so spending little time, pairing 1:1
+with every developer is needed. I think an hour every week or 2 should
+usually be sufficient. If the team has 5 developers, each requires such
+1:1 sessions to unfold what &amp; how they’re about to do in detail<a
+href="#fn9" class="footnote-ref" id="fnref9"
+role="doc-noteref"><sup>9</sup></a>, it means 5 hours every week or 2 of
+“extra work” for the PM.</p>
+<p>You’re probably not very excited to read this, but here’s the silver
+lining: How much time does the PMs in your organization already spend in
+grooming/planning sessions? The suggested sessions are actually private
+1:1 detailed grooming &amp; planning. And after those sessions, the
+estimation that the PM comes up with, is as good as an estimation asked
+from the developers - if not better (no hidden encapsulated inlined work
+PM is not aware of…)</p>
+<p>Over time, the PM “learns” through their 1:1 sessions how much time
+tasks are likely to take for each developer in their team. Over time,
+they’ll acquire a sense for when things stray off into the realm of yak
+shaving, and be able to push back when needed. Over time they’ll learn
+about the implicit tradeoffs (now made explicit) developers make, and
+learn to account for them.<br />
+This is much harder (at least at start) for the PM, but it pays off.</p>
+<p>Whatever estimations the PM has, they should keep it to themselves,
+and not even share with the devs. This is essential for 2 main reasons.
+I’ve already mentioned the need to remove sense of time accountibility
+from developers (how can one be accountible for a “wrong” estimation
+they did not even knew about?). I’ll also add that for the PM to
+actually adjust and learn to refine their estimates, they must not rely
+on estimations comming from developers, which encapsulate too much (all
+the implicit tradeoffs we want to make explicit). This is a learning and
+refining process that takes time.</p>
+<h3 id="probabillity">Probabillity</h3>
+<p>I may be stating the obvious here, but estimates are guesses. As
+such, there’s always a chance we’re wrong. That should be OK for a
+guess.<br />
+When developers estimate, they take into account the chance of possible
+problems. Sometime they occur, sometimes not.<br />
+The PM will learn to account for these as well.</p>
+<p>Another (hopefully) obvious statement: since estimates are
+probabilities, a sum of probabilities makes no sense. You might sum the
+time, but you also should multiply for the chance the guess was
+correct<a href="#fn10" class="footnote-ref" id="fnref10"
+role="doc-noteref"><sup>10</sup></a>. Meaning very quickly that guess
+would be as good as guessing the lottery winning numbers.</p>
+<p>Consider this as a guideline for the PM who learns how to adjust
+their estimates - don’t estimate on too many tasks at once.</p>
+<h2 id="summing-up">Summing up</h2>
+<p>In conclusion, navigating the complexities of modern software
+development requires a shift away from rigid, un-nuanced time estimates
+that force developers to make unnecessary compromises. A more flexible,
+trust-based approach can be achieved by eliminating the pressure of
+strict deadlines and fostering an environment where developers can focus
+on quality and gradual improvements. This leads to higher quality
+software and a more motivated team.</p>
+<p>As the Agile Manifesto wisely states:</p>
+<p><em>“Build projects around motivated individuals. Give them the
+environment and support they need, and trust them to get the job
+done.”</em></p>
+<section id="footnotes" class="footnotes footnotes-end-of-document"
+role="doc-endnotes">
+<hr />
+<ol>
+<li id="fn1"><p>The <a href="https://agilemanifesto.org">Manifesto for
+Agile Software Development</a><a href="#fnref1" class="footnote-back"
+role="doc-backlink">↩︎</a></p></li>
+<li id="fn2"><p>I’m picking up oin an old draft that has been lying
+around for <a
+href="http://blog.hochgi.com/2023/04/face-lift.html#fnref5">quite a
+while</a><a href="#fnref2" class="footnote-back"
+role="doc-backlink">↩︎</a></p></li>
+<li id="fn3"><p>For an on-time delivery cycle example, take a look at <a
+href="https://ubuntu.com/about/release-cycle">how canonical plan their
+releases</a>.<a href="#fnref3" class="footnote-back"
+role="doc-backlink">↩︎</a></p></li>
+<li id="fn4"><p>This is how most open source releases happen. No hard
+commitments on release dates. New versions are released when done.<a
+href="#fnref4" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn5"><p>Given that the developer is well versed in the code,
+fully understand the task, and have enough experience in that
+organization to also encapsulate in his guess the time needed from peers
+- be it devops / QA / code reviewers / UI designers / etc…<a
+href="#fnref5" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn6"><p>I’ve taken “estimates are fortune telling” idea from <a
+href="https://twitter.com/PragmaticAndy">Andy Hunt</a>, when he
+mentioned it on the <a
+href="https://corecursive.com/029-learn-to-think-andy-hunt">co-recursive
+podcast</a>. Great episode BTW, you should go listen to it.<a
+href="#fnref6" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn7"><p>Ron Jefferies: <a
+href="https://ronjeffries.com/articles/019-01ff/story-points/Index.html">Story
+Points Revisited</a><a href="#fnref7" class="footnote-back"
+role="doc-backlink">↩︎</a></p></li>
+<li id="fn8"><p>Well… Depends on who you ask. I bet if you’ll ask <a
+href="https://twitter.com/headinthebox">Erik Meijer</a>, he’ll probably
+tell you it’s a form of abusive <a
+href="https://www.youtube.com/watch?v=2u0sNRO-QKQ&amp;t=04m57s">subtle
+controll</a>.<a href="#fnref8" class="footnote-back"
+role="doc-backlink">↩︎</a></p></li>
+<li id="fn9"><p>I mean of course unfolding only 1 level deep in the
+current sub-tree - the immediate next thing to do. Not the whole
+pottentially infinite fractal.<a href="#fnref9" class="footnote-back"
+role="doc-backlink">↩︎</a></p></li>
+<li id="fn10"><p>This is very simplistic, but if we assume a task never
+takes less than what we guessed it would take - which makes sense when
+you think about it, one can always continue refining infinitely until
+time is up. Then the statement holds. Let’s assume we’re 50% right on
+our guesses. Given 3 guesses for 3 tasks that’ll take 3, 2, &amp; 5
+days. Guessing right on all 3 means 10 days. The chance of actually
+being right is 0.5×0.5×0.5 = 12.5%. The more you guess, less likely
+you’ll guess right.<a href="#fnref10" class="footnote-back"
+role="doc-backlink">↩︎</a></p></li>
+</ol>
+</section>
